@@ -4,7 +4,7 @@ import { price } from "../js/engine/pricing.js";
 import { buildMessages } from "../js/engine/message.js";
 import { fulfillment } from "../js/engine/fulfillment.js";
 import { parseGeneric, parse } from "../js/engine/parse.js";
-import { defaultSettings, newLead, normalizeContact, fingerprint } from "../js/schema.js";
+import { defaultSettings, newLead, normalizeContact, fingerprint, SOURCES, SOURCE_META, sourceText } from "../js/schema.js";
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; } else { fail++; console.error("FAIL:", msg); } };
@@ -88,6 +88,21 @@ for (const [k, lead] of Object.entries(fixtures)) {
   const l2 = newLead({ title: "Plumber leak", rawText: "kitchen leak today", contactRaw: "978-555-0142" });
   ok(l1.fingerprint === l2.fingerprint, "identical leads share fingerprint (dedupe works)");
   ok(newLead({ title: "Different" }).fingerprint !== l1.fingerprint, "different leads differ");
+}
+
+// 10. source metadata + sourceDetail (visibility + safe migration)
+ok(SOURCES.every((s) => SOURCE_META[s]), "every source has SOURCE_META");
+{
+  const l = newLead({ source: "facebook-group", sourceDetail: "Lawrence Buy/Sell" });
+  ok(l.sourceDetail === "Lawrence Buy/Sell", "sourceDetail is stored");
+  const st = sourceText(l);
+  ok(st.short === "Lawrence Buy/Sell", "sourceText prefers the specific detail");
+  ok(st.icon === "users", "facebook-group maps to users icon");
+  ok(sourceText(newLead({ source: "referral" })).short === "Referral", "sourceText falls back to label when no detail");
+  // legacy record without sourceDetail (v1 → v2 read path) must backfill, not break
+  const legacy = { id: "x", title: "t", source: "manual", rawText: "r" };
+  ok(newLead(legacy).sourceDetail === "", "legacy lead backfills empty sourceDetail");
+  ok(newLead({ source: "not-a-real-source" }).source === "manual", "unknown source falls back to manual");
 }
 
 console.log(`\nengine tests: ${pass} passed, ${fail} failed`);

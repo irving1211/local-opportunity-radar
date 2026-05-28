@@ -1,4 +1,5 @@
 import { el, clear } from "../util.js";
+import { sourceText } from "../schema.js";
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const ICONS = {
@@ -27,6 +28,13 @@ const ICONS = {
   trash: ["M3 6h18", "M8 6V4h8v2", "M6 6l1 14h10l1-14"],
   radar: ["M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "M12 12m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0-9 0", "M12 12L18 6"],
   flag: ["M4 22V4", "M4 4h13l-2 4 2 4H4"],
+  pencil: ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"],
+  clipboard: ["M8 4h8v3H8z", "M16 5h3v15H5V5h3", "M9 12h6", "M9 16h4"],
+  tag: ["M20.59 13.41 12 22 2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z", "M7 7h.01"],
+  bell: ["M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9", "M13.73 21a2 2 0 0 1-3.46 0"],
+  user: ["M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2", "M12 11m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0"],
+  users: ["M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2", "M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0", "M23 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
+  community: ["M3 21h18", "M5 21V7l7-4 7 4v14", "M9 21v-6h6v6"],
 };
 
 export function icon(name, cls = "ico") {
@@ -91,6 +99,14 @@ export function confirmSheet(message, { okLabel = "Confirm", danger = false } = 
     okBtn.addEventListener("click", () => { resolve(true); close(); });
     cancel.addEventListener("click", () => { resolve(false); close(); });
   });
+}
+
+export function sourceChip(lead, { full = false } = {}) {
+  const s = sourceText(lead);
+  const ic = icon(s.icon, "ico");
+  const chip = el("span", { class: "src-chip", title: s.full }, [ic, el("span", { class: "src-chip__text", text: full ? s.full : s.short })]);
+  chip.style.setProperty("--src-tint", s.tint);
+  return chip;
 }
 
 export function gradeBadge(grade, lg = false) {

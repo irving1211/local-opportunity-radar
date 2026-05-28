@@ -6,10 +6,38 @@ export const CATEGORY_LABELS = {
   "home-service": "Home service", web: "Website", automation: "Automation",
   app: "Custom app", design: "Design", other: "Other",
 };
-export const SOURCES = ["manual", "paste", "craigslist-alert", "google-alert", "referral", "board", "other"];
+export const SOURCES = ["manual", "paste", "craigslist-alert", "google-alert", "referral", "facebook-group", "board", "other"];
 export const SOURCE_LABELS = {
   manual: "Manual entry", paste: "Pasted post", "craigslist-alert": "Craigslist alert",
-  "google-alert": "Google Alert", referral: "Referral", board: "Community board", other: "Other",
+  "google-alert": "Google Alert", referral: "Referral", "facebook-group": "Facebook group", board: "Community board", other: "Other",
+};
+// Per-source display metadata (PLAN.md §9 source visibility). icon = key in ui/components icon set; tint = chip color var.
+export const SOURCE_META = {
+  manual: { short: "Manual", icon: "pencil", tint: "var(--text-3)" },
+  paste: { short: "Pasted", icon: "clipboard", tint: "var(--accent)" },
+  "craigslist-alert": { short: "Craigslist", icon: "tag", tint: "#7C5CFF" },
+  "google-alert": { short: "Google Alert", icon: "bell", tint: "#EA8600" },
+  referral: { short: "Referral", icon: "user", tint: "var(--success)" },
+  "facebook-group": { short: "FB group", icon: "users", tint: "#3B6FE0" },
+  board: { short: "Board", icon: "community", tint: "#0EA5A5" },
+  other: { short: "Other", icon: "tag", tint: "var(--text-3)" },
+};
+// What to show as the source line: prefer the user's specific detail, else the label.
+export function sourceText(lead) {
+  const meta = SOURCE_META[lead.source] || SOURCE_META.other;
+  const detail = (lead.sourceDetail || "").trim();
+  return { short: detail || meta.short, full: detail ? `${SOURCE_LABELS[lead.source]} · ${detail}` : SOURCE_LABELS[lead.source], icon: meta.icon, tint: meta.tint };
+}
+// Placeholder hint for the source-detail field, by source.
+export const SOURCE_DETAIL_HINT = {
+  "facebook-group": "Which group? e.g. 'Lawrence Buy/Sell/Trade'",
+  referral: "Who referred it? e.g. 'Mike (plumbing)'",
+  "craigslist-alert": "Which search/section? e.g. 'gigs — labor'",
+  "google-alert": "Which alert? e.g. 'website help near me'",
+  board: "Which board? e.g. 'Framingham community board'",
+  paste: "Where did you find it? (optional)",
+  manual: "Any note on where this came from (optional)",
+  other: "Where did this come from? (optional)",
 };
 export const STAGES = ["new", "reviewed", "worth-replying", "replied", "follow-up", "booked", "lost", "ignored"];
 export const STAGE_LABELS = {
@@ -65,6 +93,7 @@ export function newLead(partial = {}) {
     createdAt: partial.createdAt || t,
     updatedAt: t,
     source: SOURCES.includes(partial.source) ? partial.source : "manual",
+    sourceDetail: (partial.sourceDetail || "").trim(),
     title: (partial.title || "").trim(),
     rawText: partial.rawText || "",
     location: (partial.location || "").trim(),

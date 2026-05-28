@@ -1,8 +1,8 @@
 /* Build + channel config. Channel namespacing (PLAN.md §3, Round 5 fix) keeps preview
    and production from ever sharing SW cache / IndexedDB / localStorage. */
 export const CHANNEL = "prod"; // 'prod' | 'preview' — preview MUST also be a separate origin
-export const APP_VERSION = "1.0.1";
-export const DB_SCHEMA_VERSION = 1;
+export const APP_VERSION = "1.0.2";
+export const DB_SCHEMA_VERSION = 2;
 export const SETTINGS_SCHEMA_VERSION = 1;
 
 const ns = (k) => `lor:${CHANNEL}:${k}`;

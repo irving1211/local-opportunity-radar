@@ -1,7 +1,7 @@
 import * as store from "../store.js";
 import { el, byteLen } from "../util.js";
 import { icon, segmented, field, toast, openSheet } from "./components.js";
-import { CATEGORIES, CATEGORY_LABELS, SOURCES, SOURCE_LABELS, URGENCY, URGENCY_LABELS, newLead, normalizeContact } from "../schema.js";
+import { CATEGORIES, CATEGORY_LABELS, SOURCES, SOURCE_LABELS, URGENCY, URGENCY_LABELS, SOURCE_DETAIL_HINT, newLead, normalizeContact } from "../schema.js";
 import { parse } from "../engine/parse.js";
 import { analyzeAll } from "../leadops.js";
 import { LIMITS } from "../config.js";
@@ -15,12 +15,10 @@ export async function renderAdd(ctx) {
   wrap.appendChild(modeSeg);
 
   // Paste area
-  const sourceSel = el("select", { class: "select" }, SOURCES.map((s) => el("option", { value: s, text: SOURCE_LABELS[s], selected: s === "paste" })));
   const blob = el("textarea", { class: "textarea", placeholder: "Paste the post or the forwarded alert email here…" });
   const confBanner = el("div");
   const analyzeBtn = el("button", { class: "btn btn--primary btn--full" }, [icon("spark", "btn__icon"), "Read & pre-fill"]);
   const pasteBox = el("div", { class: "stack", style: { marginTop: "var(--sp-12)" } }, [
-    field("Source", sourceSel),
     field("Pasted text", blob, "This stays on your device. Nothing is fetched or scraped."),
     analyzeBtn, confBanner,
   ]);
@@ -28,6 +26,8 @@ export async function renderAdd(ctx) {
 
   // Review form
   const f = {
+    source: el("select", { class: "select" }, SOURCES.map((s) => el("option", { value: s, text: SOURCE_LABELS[s], selected: s === "paste" }))),
+    sourceDetail: el("input", { class: "input", type: "text", placeholder: SOURCE_DETAIL_HINT.paste }),
     title: el("input", { class: "input", type: "text", placeholder: "Short title" }),
     category: el("select", { class: "select" }, CATEGORIES.map((c) => el("option", { value: c, text: CATEGORY_LABELS[c] }))),
     urgency: el("select", { class: "select" }, URGENCY.map((u) => el("option", { value: u, text: URGENCY_LABELS[u] }))),
@@ -36,7 +36,12 @@ export async function renderAdd(ctx) {
     budgetClue: el("input", { class: "input", type: "text", placeholder: "Any budget hint, e.g. $400-600" }),
     rawText: el("textarea", { class: "textarea", placeholder: "The full post text" }),
   };
+  const sourceDetailField = field("Where it came from", f.sourceDetail, "Helps you triage at a glance.");
+  f.source.addEventListener("change", () => { f.sourceDetail.placeholder = SOURCE_DETAIL_HINT[f.source.value] || ""; });
   const formCard = el("div", { class: "card stack" }, [
+    el("div", { class: "eyebrow", text: "Source" }),
+    el("div", { class: "row", style: { gap: "var(--sp-8)", alignItems: "flex-end" } }, [el("div", { class: "grow" }, [field("Channel", f.source)]), el("div", { class: "grow" }, [sourceDetailField])]),
+    el("div", { class: "divider" }),
     field("Title", f.title),
     el("div", { class: "row", style: { gap: "var(--sp-8)" } }, [el("div", { class: "grow" }, [field("Category", f.category)]), el("div", { class: "grow" }, [field("Urgency", f.urgency)])]),
     field("Location", f.location),
@@ -56,7 +61,8 @@ export async function renderAdd(ctx) {
     const text = blob.value.trim();
     if (!text) { toast("Paste some text first"); return; }
     if (byteLen(text) > LIMITS.rawTextBytes) { toast("That text is too large — trim it down.", "error"); return; }
-    const res = parse(text, sourceSel.value, ctx.flags);
+    const res = parse(text, f.source.value, ctx.flags);
+    if (res.source) { f.source.value = res.source; f.sourceDetail.placeholder = SOURCE_DETAIL_HINT[res.source] || ""; }
     f.title.value = res.fields.title || "";
     f.category.value = res.fields.category || "other";
     f.urgency.value = res.fields.urgency || "unknown";
@@ -81,10 +87,11 @@ export async function renderAdd(ctx) {
     const rawText = f.rawText.value;
     if (!title && !rawText) { toast("Add at least a title or some text", "error"); return; }
     if (byteLen(rawText) > LIMITS.rawTextBytes) { toast("Text too large.", "error"); return; }
-    for (const k of ["title", "location", "budgetClue"]) if (byteLen(f[k].value) > LIMITS.shortFieldBytes) { toast(k + " is too long.", "error"); return; }
+    for (const k of ["title", "location", "budgetClue", "sourceDetail"]) if (byteLen(f[k].value) > LIMITS.shortFieldBytes) { toast(k + " is too long.", "error"); return; }
 
     const partial = {
-      source: mode === "paste" ? sourceSel.value : "manual",
+      source: f.source.value,
+      sourceDetail: f.sourceDetail.value.trim(),
       title, rawText,
       category: f.category.value, urgency: f.urgency.value,
       location: f.location.value.trim(), budgetClue: f.budgetClue.value.trim(),

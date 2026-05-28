@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { el, clear } from "../util.js";
-import { icon, gradeBadge, toast, emptyState } from "./components.js";
+import { icon, gradeBadge, toast, emptyState, sourceChip } from "./components.js";
 import { STAGES, STAGE_LABELS } from "../schema.js";
 import { moveStage } from "../leadops.js";
 
@@ -35,6 +35,7 @@ export async function renderPipeline(ctx) {
     right.addEventListener("click", (e) => { e.stopPropagation(); move(lead, STAGES[stageIdx + 1]); });
     const c = el("div", { class: "kcard" }, [
       el("div", { class: "kcard__title", text: lead.title || "(untitled)" }),
+      el("div", { style: { marginTop: "var(--sp-8)" } }, [sourceChip(lead)]),
       el("div", { class: "kcard__row" }, [
         gradeBadge(lead.analysis ? lead.analysis.grade : "D"),
         el("div", { class: "kcard__move" }, [left, right]),

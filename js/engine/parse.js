@@ -34,9 +34,19 @@ function urgencyOf(text) {
   return "unknown";
 }
 
+function makeTitle(lines) {
+  let t = (lines[0] || "").trim();
+  if (t.length > 70) {
+    const m = t.match(/^.{20,80}?[.!?](\s|$)/); // first sentence, no lookbehind (older mobile Safari safe)
+    if (m) t = m[0].trim().replace(/[.!?]$/, "");
+    else t = t.slice(0, 70).replace(/\s+\S*$/, "") + "…";
+  }
+  return t.slice(0, 100);
+}
+
 export function parseGeneric(text) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const title = (lines[0] || "").slice(0, 120);
+  const title = makeTitle(lines);
   const email = (text.match(EMAIL_RE) || [])[0] || "";
   const phone = (text.match(PHONE_RE) || [])[0] || "";
   const url = (text.match(URL_RE) || [])[0] || "";

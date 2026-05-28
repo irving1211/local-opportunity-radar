@@ -11,7 +11,7 @@
   transition: background var(--speed), border-color var(--speed), color var(--speed);
   white-space: nowrap;
 }
-.btn--primary { background: var(--accent); color: #fff; }
+.btn--primary { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(16,18,30,0.12); }
 .btn--primary:hover { background: var(--accent-hover); }
 .btn--secondary { border-color: var(--border-strong); color: var(--text); background: var(--bg-elevated); }
 .btn--secondary:hover { border-color: var(--accent); color: var(--accent); }
@@ -59,15 +59,24 @@
 /* ---------- List rows ---------- */
 .list { display: flex; flex-direction: column; gap: var(--sp-8); }
 .lrow {
-  display: flex; gap: var(--sp-12); align-items: flex-start;
+  display: flex; gap: var(--sp-12); align-items: center;
   background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: var(--r-card); padding: var(--sp-12) var(--sp-16);
-  width: 100%; text-align: left; transition: border-color var(--speed), background var(--speed);
+  border-radius: var(--r-card); padding: var(--sp-16);
+  width: 100%; text-align: left; box-shadow: var(--shadow-card);
+  transition: transform var(--speed) var(--ease), border-color var(--speed), box-shadow var(--speed);
 }
-.lrow:hover { border-color: var(--border-strong); }
+.lrow:hover { border-color: var(--border-strong); transform: translateY(-1px); box-shadow: var(--shadow-pop); }
+.lrow:active { transform: translateY(0); }
 .lrow__main { flex: 1; min-width: 0; }
-.lrow__title { font-weight: var(--fw-label); font-size: var(--fs-16); color: var(--text); overflow-wrap: anywhere; }
-.lrow__meta { font-size: var(--fs-12); color: var(--text-3); margin-top: 2px; display: flex; gap: var(--sp-8); flex-wrap: wrap; }
+.lrow__title { font-weight: var(--fw-label); font-size: var(--fs-15); color: var(--text); line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lrow__meta { font-size: var(--fs-12); color: var(--text-3); margin-top: 6px; display: flex; gap: var(--sp-8); flex-wrap: wrap; align-items: center; }
+.lrow__chev { color: var(--text-3); flex: none; }
+
+/* Source chip — makes the origin of every lead scannable */
+.src-chip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: var(--fs-12); font-weight: var(--fw-med); color: var(--text-2); }
+.src-chip .ico { width: 13px; height: 13px; color: var(--src-tint, var(--text-3)); flex: none; }
+.src-chip__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot-sep { color: var(--border-strong); }
 
 /* ---------- Segmented control ---------- */
 .seg { display: inline-flex; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px; gap: 2px; }
@@ -111,12 +120,20 @@
   border-top: 1px solid var(--border);
 }
 .nav__btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  background: transparent; border: none; color: var(--text-3); font-size: 10px; font-weight: var(--fw-label);
+  position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: transparent; border: none; color: var(--text-3); font-size: 10px; font-weight: var(--fw-med);
+  letter-spacing: var(--track-label); transition: color var(--speed);
 }
 .nav__btn .ico { width: 22px; height: 22px; }
 .nav__btn.is-active { color: var(--accent); }
-.nav__btn--fab .ico { width: 28px; height: 28px; }
+.nav__btn.is-active::after { content: ""; position: absolute; top: 6px; width: 16px; height: 3px; border-radius: var(--r-pill); background: var(--accent); }
+.nav__btn--fab .ico {
+  width: 42px; height: 42px; padding: 10px; color: #fff; background: var(--accent);
+  border-radius: 50%; box-shadow: 0 6px 16px var(--accent-soft), var(--shadow-card); margin-top: -14px;
+  transition: transform var(--speed) var(--ease), background var(--speed);
+}
+.nav__btn--fab:hover .ico { background: var(--accent-hover); transform: translateY(-1px); }
+.nav__btn--fab.is-active::after { display: none; }
 
 /* ---------- Modal / sheet ---------- */
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; display: grid; place-items: end center; }

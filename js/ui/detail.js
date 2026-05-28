@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { el, clear, fmtMoney, fmtDate, copyToClipboard } from "../util.js";
-import { icon, gradeBadge, chip, segmented, confirmSheet, toast, meter, field } from "./components.js";
+import { icon, gradeBadge, chip, segmented, confirmSheet, toast, meter, field, sourceChip } from "./components.js";
 import {
   STAGES, STAGE_LABELS, CATEGORY_LABELS, DIMENSION_LABELS, RECOMMENDATIONS, SCORE_DIMENSIONS,
 } from "../schema.js";
@@ -40,7 +40,8 @@ export async function renderDetail(ctx, id) {
       gradeBadge(a.grade || "D", true),
       el("div", { class: "detail-head__main" }, [
         el("h1", { text: lead.title || "(untitled lead)" }),
-        el("div", { class: "lrow__meta", style: { marginTop: "6px" } }, [
+        el("div", { style: { marginTop: "var(--sp-8)" } }, [sourceChip(lead, { full: true })]),
+        el("div", { class: "lrow__meta", style: { marginTop: "var(--sp-8)" } }, [
           chip(CATEGORY_LABELS[lead.category] || lead.category),
           lead.location ? chip(lead.location) : null,
           chip(STAGE_LABELS[lead.stage]),

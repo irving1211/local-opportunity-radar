@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { el } from "../util.js";
-import { icon, gradeBadge, chip, emptyState } from "./components.js";
+import { icon, gradeBadge, chip, emptyState, sourceChip } from "./components.js";
 import { STAGE_LABELS, RECOMMENDATIONS } from "../schema.js";
 import { fmtRelative } from "../util.js";
 import { countExampleLeads, loadExampleLeads, removeExampleLeads } from "../seed.js";
@@ -23,7 +23,10 @@ export async function renderDashboard(ctx) {
   const wrap = el("div");
 
   wrap.appendChild(el("div", { class: "head" }, [
-    el("div", {}, [el("h1", { text: "Radar" }), el("div", { class: "head__sub", text: new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) })]),
+    el("div", {}, [
+      el("div", { class: "eyebrow", text: new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) }),
+      el("h1", { class: "display", text: "Radar", style: { marginTop: "var(--sp-4)" } }),
+    ]),
     el("div", { class: "row", style: { gap: "var(--sp-8)" } }, [gradeBadgeLogo()]),
   ]));
 
@@ -84,14 +87,22 @@ export async function renderDashboard(ctx) {
     stat(leads.length, "Total"), stat(open.length, "Open"), stat(na.length, "To do"), stat(booked.length, "Booked"),
   ]));
 
-  // Grade bar
+  // Grade distribution
   const byGrade = (g) => leads.filter((l) => l.analysis && l.analysis.grade === g).length;
-  const gcell = (g, label, varColor) => el("div", { class: "gcell", style: { background: varColor } }, [el("small", { text: label }), el("b", { text: String(byGrade(g)) })]);
-  wrap.appendChild(el("div", { class: "grade-bar", style: { marginBottom: "var(--sp-24)" } }, [
-    gcell("A", "A · high value", "var(--grade-a)"),
-    gcell("B", "B · pursue", "var(--grade-b)"),
-    gcell("C", "C · if slow", "var(--grade-c)"),
-    gcell("D", "D · skip", "var(--grade-d)"),
+  const gcell = (g, label, color) => {
+    const cell = el("div", { class: "gcell" }, [
+      el("div", { class: "gcell__top" }, [el("span", { class: "gcell__tag", text: g }), el("b", { text: String(byGrade(g)) })]),
+      el("small", { text: label }),
+    ]);
+    cell.style.setProperty("--g", color);
+    return cell;
+  };
+  wrap.appendChild(el("div", { class: "eyebrow", style: { marginBottom: "var(--sp-8)" }, text: "Grade mix" }));
+  wrap.appendChild(el("div", { class: "grade-bar", style: { marginBottom: "var(--sp-32)" } }, [
+    gcell("A", "High value", "var(--grade-a)"),
+    gcell("B", "Pursue", "var(--grade-b)"),
+    gcell("C", "If slow", "var(--grade-c)"),
+    gcell("D", "Skip", "var(--grade-d)"),
   ]));
 
   // Needs action
@@ -115,16 +126,18 @@ export function leadRow(lead, onClick) {
   const a = lead.analysis || {};
   const reco = a.recommendation ? RECOMMENDATIONS[a.recommendation] : null;
   const meta = el("div", { class: "lrow__meta" }, [
+    sourceChip(lead),
+    el("span", { class: "dot-sep", text: "·" }),
     el("span", { text: STAGE_LABELS[lead.stage] || lead.stage }),
-    lead.location ? el("span", { text: "· " + lead.location }) : null,
-    el("span", { text: "· " + fmtRelative(lead.createdAt) }),
+    el("span", { class: "dot-sep", text: "·" }),
+    el("span", { text: fmtRelative(lead.createdAt) }),
   ]);
   const main = el("div", { class: "lrow__main" }, [
     el("div", { class: "lrow__title", text: lead.title || "(untitled lead)" }),
-    reco ? el("div", { style: { marginTop: "4px" } }, [chip(reco.label, reco.tone)]) : null,
+    reco ? el("div", { style: { marginTop: "6px" } }, [chip(reco.label, reco.tone)]) : null,
     meta,
   ]);
   return el("button", { class: "lrow", type: "button", onclick: onClick }, [
-    gradeBadge(a.grade || "D"), main, icon("right", "ico"),
+    gradeBadge(a.grade || "D"), main, icon("right", "ico lrow__chev"),
   ]);
 }
