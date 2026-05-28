@@ -49,7 +49,7 @@ export async function ingestFeed(settings, { force = false } = {}) {
   const last = settings.feed && settings.feed.lastFetchAt ? new Date(settings.feed.lastFetchAt).getTime() : 0;
   if (!force && Date.now() - last < INGEST.throttleMs) return { skippedThrottle: true, added: 0, skipped: 0 };
   let data;
-  try { data = await getJSON(INGEST.feedPath + "?t=" + Date.now()); }
+  try { data = await getJSON(INGEST.feedPath); } // SW is network-first for feed.json — no cache-buster needed
   catch (e) { store.logError("ingest-feed", e.message, e.stack); return { error: e.message, added: 0, skipped: 0 }; }
   const res = await ingestRecords((data && data.records) || [], settings);
   settings.feed = { ...(settings.feed || {}), lastFetchAt: nowISO() };

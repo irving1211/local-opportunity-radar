@@ -1,5 +1,5 @@
 import { uid, hash, normalize, nowISO } from "./util.js";
-import { SETTINGS_SCHEMA_VERSION } from "./config.js";
+import { SETTINGS_SCHEMA_VERSION, DB_SCHEMA_VERSION } from "./config.js";
 
 export const CATEGORIES = ["home-service", "web", "automation", "app", "design", "other"];
 export const CATEGORY_LABELS = {
@@ -108,7 +108,7 @@ export function newLead(partial = {}) {
     updatedAt: t,
     source: SOURCES.includes(partial.source) ? partial.source : "manual",
     sourceDetail: (partial.sourceDetail || "").trim(),
-    sourceUrl: (partial.sourceUrl || "").trim(),         // canonical link to the original posting (if any)
+    sourceUrl: safeUrl(partial.sourceUrl),               // canonical link (http/https only — untrusted feed input)
     foundViaQuery: (partial.foundViaQuery || "").trim(), // which saved search/connector query surfaced it
     postedAt: partial.postedAt || null,                  // when the opportunity was posted (from the source)
     fetchedAt: partial.fetchedAt || null,                // when our connector pulled it
@@ -154,6 +154,14 @@ export function normalizeContact(raw) {
   return { type: "other", value: "", raw: r };
 }
 
+// Only allow http/https links (untrusted feed/import input must not become javascript:/data: hrefs).
+export function safeUrl(u) {
+  const s = (u || "").trim();
+  if (!s) return "";
+  try { const url = new URL(s); return (url.protocol === "http:" || url.protocol === "https:") ? url.href : ""; }
+  catch { return ""; }
+}
+
 export function fingerprint(lead) {
   // A canonical source URL is the strongest dedupe key for ingested postings.
   if (lead.sourceUrl) return hash("url|" + normalize(lead.sourceUrl));
@@ -168,7 +176,7 @@ export function validateImport(obj) {
   if (obj.kind && obj.kind !== "local-opportunity-radar-backup") errors.push("Unrecognized backup file.");
   if (!Array.isArray(obj.leads)) errors.push("Missing 'leads' array.");
   if (obj.events && !Array.isArray(obj.events)) errors.push("'events' must be an array.");
-  if (typeof obj.dbSchemaVersion === "number" && obj.dbSchemaVersion > 1) errors.push("Backup is from a newer app version (schema " + obj.dbSchemaVersion + ") — update the app before importing.");
+  if (typeof obj.dbSchemaVersion === "number" && obj.dbSchemaVersion > DB_SCHEMA_VERSION) errors.push("Backup is from a newer app version (schema " + obj.dbSchemaVersion + ") — update the app before importing.");
   if (errors.length) return { ok: false, errors };
   // sanitize leads to known shape
   const leads = obj.leads.map((l) => newLead({ ...l, id: l.id }));

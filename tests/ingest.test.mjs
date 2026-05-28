@@ -2,7 +2,7 @@
 // Run: node tests/ingest.test.mjs
 import { makeRecord } from "../ingest/normalize.mjs";
 import { recordToLead } from "../js/ingest.js";
-import { INGESTED_SOURCES, SOURCE_META, SOURCES } from "../js/schema.js";
+import { INGESTED_SOURCES, SOURCE_META, SOURCES, validateImport, safeUrl, newLead } from "../js/schema.js";
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.error("FAIL:", m); } };
@@ -62,6 +62,16 @@ ok(makeRecord({ source: "remotive", title: "Full-time Manager", description: "pe
   ok(lead.contact.type === "email" && lead.contact.value === "jobs@tinyco.example", "HN email becomes the lead's contact");
 }
 for (const sname of ["hackernews"]) { ok(SOURCES.includes(sname), "SOURCES has " + sname); ok(!!SOURCE_META[sname], "SOURCE_META has " + sname); ok(INGESTED_SOURCES.has(sname), "INGESTED_SOURCES has " + sname); }
+
+// 7. backup round-trip: a current-version export must validate on import (Codex HIGH fix)
+ok(validateImport({ kind: "local-opportunity-radar-backup", dbSchemaVersion: 3, leads: [], events: [] }).ok, "current-schema backup imports OK");
+ok(!validateImport({ kind: "local-opportunity-radar-backup", dbSchemaVersion: 99, leads: [] }).ok, "newer-than-app backup rejected");
+
+// 8. sourceUrl sanitization (Codex MED fix): only http/https survive
+ok(safeUrl("https://x.com/y") === "https://x.com/y", "https url kept");
+ok(safeUrl("javascript:alert(1)") === "", "javascript: url stripped");
+ok(safeUrl("data:text/html,x") === "", "data: url stripped");
+ok(newLead({ sourceUrl: "javascript:alert(1)" }).sourceUrl === "", "lead never stores a javascript: sourceUrl");
 
 console.log(`\ningest tests: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

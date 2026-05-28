@@ -116,7 +116,7 @@ export async function putLead(lead) {
 }
 
 export async function deleteLead(id) {
-  return withWriteLock(() => new Promise((res, rej) => {
+  const r = await withWriteLock(() => new Promise((res, rej) => {
     const t = tx(["leads", "events"], "readwrite");
     t.objectStore("leads").delete(id);
     const idx = t.objectStore("events").index("byLead");
@@ -125,6 +125,13 @@ export async function deleteLead(id) {
     t.oncomplete = () => res(true);
     t.onerror = () => rej(t.error);
   }));
+  await bumpSentinel(); // keep eviction-detector accurate after a delete
+  return r;
+}
+
+// Recompute the storage sentinel from live counts (preserving last-backup time).
+export async function bumpSentinel() {
+  try { const leads = await getAllLeads(); const ev = await countEvents(); const s = readSentinel(); writeSentinel(leads.length, ev, s && s.lastBackupAt); } catch (e) {}
 }
 
 /* ---------- Events (append-only, dedup-on-write) PLAN.md §4 ---------- */
@@ -145,11 +152,13 @@ export async function addEvent(evt) {
 }
 
 export async function getEventsForLead(leadId, limit = 50) {
+  // Collect ALL events for the lead, THEN sort by time and slice (the byLead index is not
+  // time-ordered, so capping mid-cursor could drop the newest events).
   const out = [];
   return new Promise((res, rej) => {
     const idx = tx("events", "readonly").objectStore("events").index("byLead");
-    const cur = idx.openCursor(IDBKeyRange.only(leadId), "prev");
-    cur.onsuccess = () => { const c = cur.result; if (c && out.length < limit) { out.push(c.value); c.continue(); } else res(out.sort((a, b) => (b.at || "").localeCompare(a.at || ""))); };
+    const cur = idx.openCursor(IDBKeyRange.only(leadId));
+    cur.onsuccess = () => { const c = cur.result; if (c) { out.push(c.value); c.continue(); } else res(out.sort((a, b) => (b.at || "").localeCompare(a.at || "")).slice(0, limit)); };
     cur.onerror = () => rej(cur.error);
   });
 }
@@ -222,9 +231,12 @@ export async function requestPersist() {
 export async function exportData(settings, { includeKey = false } = {}) {
   const leads = await getAllLeads();
   const events = await reqP(tx("events", "readonly").objectStore("events").getAll());
-  // exclude the billable API key from standard exports (Round 2 fix)
+  // exclude ALL billable API keys from standard exports (Round 2 + Codex review)
   const safeSettings = JSON.parse(JSON.stringify(settings || {}));
-  if (!includeKey && safeSettings.ai) safeSettings.ai.apiKey = "";
+  if (!includeKey) {
+    if (safeSettings.ai) safeSettings.ai.apiKey = "";
+    if (safeSettings.google) safeSettings.google.apiKey = "";
+  }
   return {
     kind: "local-opportunity-radar-backup",
     at: nowISO(), appVersion: APP_VERSION, dbSchemaVersion: DB_SCHEMA_VERSION,
@@ -247,9 +259,11 @@ export async function importData(parsed, mode = "merge") {
 }
 
 export async function clearAll() {
-  return withWriteLock(() => new Promise((res, rej) => {
+  const r = await withWriteLock(() => new Promise((res, rej) => {
     const t = tx(["leads", "events"], "readwrite");
     t.objectStore("leads").clear(); t.objectStore("events").clear();
     t.oncomplete = () => res(true); t.onerror = () => rej(t.error);
   }));
+  await bumpSentinel();
+  return r;
 }

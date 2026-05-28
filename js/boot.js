@@ -37,7 +37,7 @@
     req.onsuccess = function () {
       var db = req.result;
       var out = { kind: "local-opportunity-radar-backup", at: new Date().toISOString(), recovery: true, leads: [], events: [], settings: null };
-      try { out.settings = JSON.parse(localStorage.getItem("lor:prod:settings") || "null"); } catch (e) {}
+      try { var st = JSON.parse(localStorage.getItem("lor:prod:settings") || "null"); if (st) { if (st.ai) st.ai.apiKey = ""; if (st.google) st.google.apiKey = ""; } out.settings = st; } catch (e) {}
       var names = Array.prototype.slice.call(db.objectStoreNames);
       var pending = 0;
       function dump(storeName, key) {
@@ -61,11 +61,12 @@
   }
 
   function clearCachesAndReload() {
+    // Scope to THIS app only — don't nuke sibling apps that may share the github.io origin.
     var done = function () { location.reload(); };
     var jobs = [];
-    if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+    if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf("lor-") === 0; }).map(function (k) { return caches.delete(k); })); }));
     if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations)
-      jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+      jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.filter(function (r) { return location.href.indexOf(r.scope) === 0; }).map(function (r) { return r.unregister(); })); }));
     Promise.all(jobs).then(done, done);
   }
 

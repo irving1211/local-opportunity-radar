@@ -94,8 +94,8 @@ async function clearCachesReload() {
   const ok = await confirmSheet("Clear the app's cached code and reload? Your leads are NOT affected.", { okLabel: "Clear & reload" });
   if (!ok) return;
   try {
-    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
-    if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.unregister())); }
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter((k) => k.startsWith("lor-")).map((k) => caches.delete(k))); }
+    if (navigator.serviceWorker) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.filter((r) => location.href.startsWith(r.scope)).map((r) => r.unregister())); }
   } catch {}
   location.reload();
 }
