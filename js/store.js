@@ -11,10 +11,17 @@ export const state = { safeMode: false, safeReason: "", dataLoss: false, setting
 /* ---------- IndexedDB open + version-skew gate (PLAN.md §3) ---------- */
 export function openDB() {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (fn, arg) => { if (!settled) { settled = true; fn(arg); } };
     let req;
     try { req = indexedDB.open(DB_NAME, DB_SCHEMA_VERSION); }
     catch (e) { return reject(e); }
-    req.onupgradeneeded = (ev) => {
+    // Never hang the app on a stuck/blocked upgrade — fail to recovery instead.
+    const t = setTimeout(() => done(reject, new Error("IndexedDB open timed out (possibly blocked by another open tab).")), 8000);
+    req.onupgradeneeded = () => {
+      // New optional fields (sourceDetail/sourceUrl/foundViaQuery/postedAt/fetchedAt/ingested) are
+      // schemaless on the stored objects and default at read time, so the upgrade only needs to
+      // ensure the object stores exist — NO row-by-row migration (which could stall the upgrade txn).
       const db = req.result;
       if (!db.objectStoreNames.contains("leads")) db.createObjectStore("leads", { keyPath: "id" });
       if (!db.objectStoreNames.contains("events")) {
@@ -23,26 +30,15 @@ export function openDB() {
         es.createIndex("byIdem", "idempotencyKey", { unique: false });
       }
       if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "k" });
-      // Backfill new fields on existing leads (safe, inside the upgrade transaction).
-      // v1→v2 added sourceDetail; v2→v3 added sourceUrl/foundViaQuery/postedAt/fetchedAt/ingested.
-      if (ev.oldVersion && ev.oldVersion < 3) {
-        try {
-          const os = ev.target.transaction.objectStore("leads");
-          const cur = os.openCursor();
-          cur.onsuccess = () => {
-            const c = cur.result; if (!c) return;
-            const v = c.value || {}; let dirty = false;
-            const def = { sourceDetail: "", sourceUrl: "", foundViaQuery: "", postedAt: null, fetchedAt: null, ingested: false };
-            for (const k in def) if (v[k] === undefined) { v[k] = def[k]; dirty = true; }
-            if (dirty) c.update(v);
-            c.continue();
-          };
-        } catch (e) { /* fresh DB has no rows to migrate */ }
-      }
     };
-    req.onsuccess = () => { _db = req.result; resolve(_db); };
-    req.onerror = () => reject(req.error);
-    req.onblocked = () => {/* another tab holds an older connection */};
+    req.onsuccess = () => {
+      clearTimeout(t);
+      _db = req.result;
+      _db.onversionchange = () => { try { _db.close(); } catch (e) {} }; // let a newer version upgrade
+      done(resolve, _db);
+    };
+    req.onerror = () => { clearTimeout(t); done(reject, req.error); };
+    req.onblocked = () => { clearTimeout(t); done(reject, new Error("Database upgrade blocked — close other tabs of this app and reload.")); };
   });
 }
 
