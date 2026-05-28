@@ -91,6 +91,13 @@
     var b;
     if ((b = document.getElementById("bf-export"))) b.addEventListener("click", exportBackup);
     if ((b = document.getElementById("bf-unsw"))) b.addEventListener("click", clearCachesAndReload);
+    if ((b = document.getElementById("bf-reset"))) b.addEventListener("click", function () {
+      if (!window.confirm("Reset the local database? This deletes leads stored on this device. Export a backup first if you need them.")) return;
+      try {
+        var del = indexedDB.deleteDatabase(DB_NAME);
+        del.onsuccess = del.onerror = del.onblocked = function () { location.reload(); };
+      } catch (e) { location.reload(); }
+    });
     if ((b = document.getElementById("bf-retry"))) b.addEventListener("click", function () { location.reload(); });
   });
 })();
