@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- Hardened CSP (PLAN.md §2.6): the ONLY allowed network origin is api.anthropic.com (optional, opt-in AI Enhance).
+       All other outbound/navigation surfaces are locked so the app cannot scrape or auto-send by construction. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    connect-src 'self' https://api.anthropic.com;
+    img-src 'self' data:;
+    script-src 'self';
+    style-src 'self';
+    font-src 'self';
+    worker-src 'self';
+    manifest-src 'self';
+    object-src 'none';
+    frame-src 'none';
+    child-src 'none';
+    base-uri 'none';
+    form-action 'none';
+  " />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0e0e10" media="(prefers-color-scheme: dark)" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Radar" />
+  <meta name="description" content="Personal hub to find, score, and prepare responses to local side-job opportunities. Manual outreach only." />
+  <title>Local Opportunity Radar</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icon-180.png" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/screens.css" />
+</head>
+<body>
+  <noscript>
+    <div class="noscript">Local Opportunity Radar needs JavaScript. It runs entirely on your device — no server, no tracking.</div>
+  </noscript>
+
+  <!-- Data-loss / safe-mode banners (filled by app at boot) -->
+  <div id="banner-host" aria-live="polite"></div>
+
+  <!-- App root -->
+  <div id="app" class="app" hidden></div>
+
+  <!-- Bottom navigation -->
+  <nav id="nav" class="nav" aria-label="Primary" hidden></nav>
+
+  <!-- Toast host -->
+  <div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+  <!-- Boot-safe failure screen (PLAN.md §3 Round 4 fix). Shown by boot.js if the app fails to start.
+       Its recovery actions do NOT depend on the app modules. -->
+  <div id="boot-fail" class="boot-fail" hidden>
+    <div class="boot-fail__card">
+      <h1>Recovery mode</h1>
+      <p id="boot-fail__msg">The app couldn't start cleanly. Your data is stored locally and is most likely safe. Try a recovery action below.</p>
+      <div class="boot-fail__actions">
+        <button id="bf-export" class="btn btn--secondary" type="button">Export backup</button>
+        <button id="bf-unsw" class="btn btn--secondary" type="button">Clear app cache &amp; reload</button>
+        <button id="bf-retry" class="btn btn--primary" type="button">Try again</button>
+      </div>
+      <details class="boot-fail__details">
+        <summary>Technical details</summary>
+        <pre id="bf-detail"></pre>
+      </details>
+    </div>
+  </div>
+
+  <!-- Boot guard: classic script (CSP script-src 'self'), runs before modules, catches fatal boot failures. -->
+  <script src="js/boot.js"></script>
+  <!-- App: ES module entrypoint. -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

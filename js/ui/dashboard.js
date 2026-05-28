@@ -1,0 +1,96 @@
+import * as store from "../store.js";
+import { el } from "../util.js";
+import { icon, gradeBadge, chip, emptyState } from "./components.js";
+import { STAGE_LABELS, RECOMMENDATIONS } from "../schema.js";
+import { fmtRelative } from "../util.js";
+
+const isDue = (iso) => iso && new Date(iso).getTime() <= Date.now() + 86400000;
+
+export function needsAction(lead) {
+  if (["booked", "lost", "ignored"].includes(lead.stage)) return false;
+  if (lead.stage === "new") return true;
+  if (lead.analysis && ["reply-now", "high-fit-premium"].includes(lead.analysis.recommendation)) return true;
+  if (lead.stage === "follow-up" && isDue(lead.followUpAt)) return true;
+  if (isDue(lead.followUpAt)) return true;
+  return false;
+}
+
+export async function renderDashboard(ctx) {
+  const leads = await store.getAllLeads();
+  const wrap = el("div");
+
+  wrap.appendChild(el("div", { class: "head" }, [
+    el("div", {}, [el("h1", { text: "Radar" }), el("div", { class: "head__sub", text: new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) })]),
+    el("div", { class: "row", style: { gap: "var(--sp-8)" } }, [gradeBadgeLogo()]),
+  ]));
+
+  // Backup nudge
+  const stale = leads.length > 0 && (!ctx.settings.lastBackupAt || (Date.now() - new Date(ctx.settings.lastBackupAt).getTime() > 14 * 86400000));
+  if (stale) {
+    wrap.appendChild(el("div", { class: "card", style: { borderColor: "var(--accent)", marginBottom: "var(--sp-16)" } }, [
+      el("div", { class: "row row--between" }, [
+        el("div", {}, [el("div", { style: { fontWeight: "500" }, text: "Back up your data" }), el("div", { class: "hint", text: "Your leads live on this device only. Export a copy." })]),
+        el("button", { class: "btn btn--primary btn--sm", text: "Backup now", onclick: async () => { await ctx.exportBackup(); ctx.settings.lastBackupAt = new Date().toISOString(); store.saveSettings(ctx.settings); ctx.toast("Backup downloaded", "success"); ctx.reload(); } }),
+      ]),
+    ]));
+  }
+
+  if (leads.length === 0) {
+    wrap.appendChild(el("div", { class: "card" }, [emptyState("radar", "No leads yet", "Add your first opportunity to get a score, a reply, and a price.")]));
+    wrap.appendChild(el("button", { class: "btn btn--primary btn--full", style: { marginTop: "var(--sp-16)" }, text: "Add a lead", onclick: () => ctx.navigate("#/add") }));
+    return wrap;
+  }
+
+  // Stats
+  const open = leads.filter((l) => !["booked", "lost", "ignored"].includes(l.stage));
+  const na = leads.filter(needsAction);
+  const booked = leads.filter((l) => l.stage === "booked");
+  const stat = (num, label) => el("div", { class: "stat" }, [el("div", { class: "stat__num", text: String(num) }), el("div", { class: "stat__label", text: label })]);
+  wrap.appendChild(el("div", { class: "stat-grid", style: { marginBottom: "var(--sp-16)" } }, [
+    stat(leads.length, "Total"), stat(open.length, "Open"), stat(na.length, "To do"), stat(booked.length, "Booked"),
+  ]));
+
+  // Grade bar
+  const byGrade = (g) => leads.filter((l) => l.analysis && l.analysis.grade === g).length;
+  const gcell = (g, label, varColor) => el("div", { class: "gcell", style: { background: varColor } }, [el("small", { text: label }), el("b", { text: String(byGrade(g)) })]);
+  wrap.appendChild(el("div", { class: "grade-bar", style: { marginBottom: "var(--sp-24)" } }, [
+    gcell("A", "A · high value", "var(--grade-a)"),
+    gcell("B", "B · pursue", "var(--grade-b)"),
+    gcell("C", "C · if slow", "var(--grade-c)"),
+    gcell("D", "D · skip", "var(--grade-d)"),
+  ]));
+
+  // Needs action
+  wrap.appendChild(el("h2", { style: { marginBottom: "var(--sp-8)" }, text: "Needs your attention" }));
+  if (na.length === 0) {
+    wrap.appendChild(el("div", { class: "card muted", text: "You're all caught up. Nice." }));
+  } else {
+    const list = el("div", { class: "list" });
+    na.sort((a, b) => (b.analysis?.fitScore || 0) - (a.analysis?.fitScore || 0));
+    for (const lead of na.slice(0, 8)) list.appendChild(leadRow(lead, () => ctx.navigate("#/lead/" + lead.id)));
+    wrap.appendChild(list);
+  }
+  return wrap;
+}
+
+function gradeBadgeLogo() {
+  return el("div", { class: "row", style: { gap: "6px", color: "var(--accent)" } }, [icon("radar", "ico")]);
+}
+
+export function leadRow(lead, onClick) {
+  const a = lead.analysis || {};
+  const reco = a.recommendation ? RECOMMENDATIONS[a.recommendation] : null;
+  const meta = el("div", { class: "lrow__meta" }, [
+    el("span", { text: STAGE_LABELS[lead.stage] || lead.stage }),
+    lead.location ? el("span", { text: "· " + lead.location }) : null,
+    el("span", { text: "· " + fmtRelative(lead.createdAt) }),
+  ]);
+  const main = el("div", { class: "lrow__main" }, [
+    el("div", { class: "lrow__title", text: lead.title || "(untitled lead)" }),
+    reco ? el("div", { style: { marginTop: "4px" } }, [chip(reco.label, reco.tone)]) : null,
+    meta,
+  ]);
+  return el("button", { class: "lrow", type: "button", onclick: onClick }, [
+    gradeBadge(a.grade || "D"), main, icon("right", "ico"),
+  ]);
+}
