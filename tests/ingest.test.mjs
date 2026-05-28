@@ -1,0 +1,56 @@
+// Ingestion tests: connector normalization, record→lead, URL-aware dedupe, source metadata.
+// Run: node tests/ingest.test.mjs
+import { makeRecord } from "../ingest/normalize.mjs";
+import { recordToLead } from "../js/ingest.js";
+import { INGESTED_SOURCES, SOURCE_META, SOURCES } from "../js/schema.js";
+
+let pass = 0, fail = 0;
+const ok = (c, m) => { if (c) pass++; else { fail++; console.error("FAIL:", m); } };
+
+// 1. makeRecord normalizes a Remotive-like job (HTML stripped, category classified, capped)
+const rec = makeRecord({
+  source: "remotive", sourceDetail: "Software Development",
+  sourceUrl: "https://remotive.com/remote-jobs/x-123",
+  title: "Senior Automation Engineer", company: "Acme",
+  description: "<p>Build <b>automation</b> workflows &amp; internal tools.</p>",
+  location: "USA only", postedAt: "2026-05-20T00:00:00", foundViaQuery: "automation",
+  tags: ["python", "zapier"], remote: true,
+});
+ok(rec.source === "remotive", "record keeps source");
+ok(rec.sourceUrl.includes("remotive.com"), "record keeps url");
+ok(!/[<>]/.test(rec.rawText), "HTML tags stripped from description");
+ok(rec.rawText.includes("automation"), "description text preserved");
+ok(rec.rawText.includes("&") && !rec.rawText.includes("&amp;"), "HTML entities decoded");
+ok(rec.category === "automation", "category classified from text");
+ok(rec.remote === true, "remote flag preserved");
+ok(rec.fetchedAt, "fetchedAt stamped");
+
+// 2. recordToLead → a proper ingested lead
+const lead = recordToLead(rec);
+ok(lead.ingested === true, "lead marked ingested");
+ok(lead.source === "remotive", "lead source preserved");
+ok(lead.sourceUrl === rec.sourceUrl, "lead sourceUrl preserved");
+ok(lead.foundViaQuery === "automation", "lead foundViaQuery preserved");
+ok(lead.postedAt === rec.postedAt, "lead postedAt preserved");
+ok(!!lead.fetchedAt, "lead fetchedAt set");
+
+// 3. URL-aware dedupe: same sourceUrl → same fingerprint regardless of title differences
+const a = recordToLead({ ...rec, title: "Title A" });
+const b = recordToLead({ ...rec, title: "Completely Different Title" });
+ok(a.fingerprint === b.fingerprint, "same sourceUrl → identical fingerprint (dedupe across refreshes)");
+const c = recordToLead({ ...rec, sourceUrl: "https://remotive.com/remote-jobs/y-999" });
+ok(c.fingerprint !== a.fingerprint, "different sourceUrl → different fingerprint");
+
+// 4. connector source metadata completeness
+for (const sname of ["remotive", "greenhouse", "lever", "google-search"]) {
+  ok(SOURCES.includes(sname), "SOURCES includes " + sname);
+  ok(!!SOURCE_META[sname], "SOURCE_META has " + sname);
+  ok(INGESTED_SOURCES.has(sname), "INGESTED_SOURCES has " + sname);
+}
+
+// 5. garbage/empty record doesn't throw
+ok(recordToLead({}).title === "(untitled)", "empty record → untitled lead (no throw)");
+ok(recordToLead({}).ingested === true, "empty record still flagged ingested");
+
+console.log(`\ningest tests: ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

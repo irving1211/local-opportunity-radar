@@ -1,0 +1,40 @@
+name: Ingest leads → feed.json
+
+# Compliant ingestion ONLY: official public APIs (Remotive, Greenhouse, Lever). No scraping.
+# Runs on a schedule + on demand, regenerates feed.json, and commits it so GitHub Pages
+# redeploys and the PWA picks up fresh leads.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Generate feed.json
+        run: node ingest/run.mjs
+      - name: Commit feed if changed
+        run: |
+          git config user.name "lor-ingest-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain feed.json)" ]; then
+            git add feed.json
+            git commit -m "chore(ingest): refresh feed.json [skip ci]"
+            git push
+            echo "feed.json updated"
+          else
+            echo "no feed changes"
+          fi

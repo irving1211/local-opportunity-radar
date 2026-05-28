@@ -58,6 +58,8 @@ export async function renderSettings(ctx) {
   rescore.addEventListener("click", () => onRescore(ctx));
   wrap.appendChild(el("div", { class: "set-group" }, [rescore]));
 
+  wrap.appendChild(sourcesGroup(ctx, s));
+  wrap.appendChild(googleGroup(ctx, s));
   wrap.appendChild(aiGroup(ctx, s, persist));
   wrap.appendChild(group("Allowed sources", [allowedSourcesNote()]));
   wrap.appendChild(await dataGroup(ctx, s));
@@ -75,6 +77,63 @@ function toggleRow(label, checked, onChange) {
   const input = el("input", { type: "checkbox", checked });
   input.addEventListener("change", () => onChange(input.checked));
   return el("div", { class: "toggle-row" }, [el("span", { text: label }), el("span", { class: "switch" }, [input, el("span", { class: "switch__track" })])]);
+}
+
+function sourcesGroup(ctx, s) {
+  const flags = store.loadFlags();
+  const refreshBtn = el("button", { class: "btn btn--primary btn--full" }, [icon("refresh", "btn__icon"), "Refresh leads from feed now"]);
+  refreshBtn.addEventListener("click", async () => {
+    refreshBtn.disabled = true; refreshBtn.textContent = "Checking…";
+    try { const r = await ctx.refreshFeed(); toast(r && r.error ? ("Feed error: " + r.error) : (r && r.added > 0 ? `Added ${r.added} new leads` : "No new leads right now"), r && r.added > 0 ? "success" : (r && r.error ? "error" : "")); ctx.reload(); }
+    catch (e) { toast(e.message, "error"); refreshBtn.disabled = false; refreshBtn.textContent = "Refresh leads from feed now"; }
+  });
+  const auto = el("input", { type: "checkbox", checked: !!flags.feedIngest });
+  auto.addEventListener("change", () => { store.setFlag("feedIngest", auto.checked); ctx.refreshSettings(); });
+  const last = s.feed && s.feed.lastFetchAt ? new Date(s.feed.lastFetchAt).toLocaleString() : "never";
+  return el("div", { class: "set-group" }, [
+    el("h2", { text: "Lead sources" }),
+    el("div", { class: "card stack" }, [
+      el("div", { class: "hint", text: "Compliant official sources (Remotive, Greenhouse, Lever) are refreshed by a scheduled job into a feed this app reads. No scraping, no auto-outreach." }),
+      refreshBtn,
+      el("div", { class: "toggle-row" }, [el("span", { text: "Auto-pull feed when I open the app" }), el("span", { class: "switch" }, [auto, el("span", { class: "switch__track" })])]),
+      el("div", { class: "hint", text: "Last pulled: " + last }),
+    ]),
+  ]);
+}
+
+function googleGroup(ctx, s) {
+  const g = s.google || {};
+  const key = el("input", { class: "input", type: "password", value: g.apiKey || "", placeholder: "Google API key", autocomplete: "off" });
+  const cx = el("input", { class: "input", type: "text", value: g.cx || "", placeholder: "Programmable Search engine ID (cx)" });
+  const loc = el("input", { class: "input", type: "text", value: g.location || "", placeholder: "e.g. Massachusetts" });
+  const remote = el("input", { type: "checkbox", checked: !!g.remoteOnly });
+  const queries = el("textarea", { class: "textarea", value: (g.queries || []).join("\n"), placeholder: "One search per line" });
+  const searchBtn = el("button", { class: "btn btn--secondary btn--full" }, [icon("search", "btn__icon"), "Search Google now"]);
+  const save = () => {
+    s.google = { apiKey: key.value.trim(), cx: cx.value.trim(), location: loc.value.trim(), remoteOnly: remote.checked, queries: queries.value.split("\n").map((x) => x.trim()).filter(Boolean) };
+    store.saveSettings(s); ctx.refreshSettings();
+    store.setFlag("googleSearch", !!(s.google.apiKey && s.google.cx));
+  };
+  [key, cx, loc, queries].forEach((node) => node.addEventListener("blur", save));
+  remote.addEventListener("change", save);
+  searchBtn.addEventListener("click", async () => {
+    save();
+    searchBtn.disabled = true; searchBtn.textContent = "Searching…";
+    try { const r = await ctx.runGoogleSearch(); toast(`${r.added} new from ${r.queriesRun} ${r.queriesRun === 1 ? "query" : "queries"}` + (r.errors && r.errors.length ? ` (${r.errors.length} errored)` : ""), r.added > 0 ? "success" : ""); ctx.reload(); }
+    catch (e) { toast(e.message, "error"); searchBtn.disabled = false; searchBtn.textContent = "Search Google now"; }
+  });
+  return el("div", { class: "set-group" }, [
+    el("h2", { text: "Google search (optional)" }),
+    el("div", { class: "card stack" }, [
+      el("div", { class: "banner banner--warning", style: { borderRadius: "var(--r-sm)" }, text: "Uses the official Google Programmable Search API with YOUR key (stored on this device). Off until you add a key + engine ID. Never scrapes Google." }),
+      field("API key", key),
+      field("Search engine ID (cx)", cx),
+      field("Location terms", loc, "Appended to local searches unless remote-only."),
+      el("label", { class: "row", style: { gap: "var(--sp-8)" } }, [remote, el("span", { text: "Remote-only (skip location)" })]),
+      field("Saved searches (one per line)", queries),
+      searchBtn,
+    ]),
+  ]);
 }
 
 function aiGroup(ctx, s, persist) {
@@ -115,8 +174,8 @@ function aiGroup(ctx, s, persist) {
 }
 
 function allowedSourcesNote() {
-  const ok = ["Manual entry", "Pasting a post you found", "Craigslist saved-search ALERT EMAIL (forwarded to yourself, then pasted)", "Google Alert email (pasted)", "Referrals from your own site/form", "Community boards with email/RSS you subscribe to"];
-  const no = ["Automated Facebook collection", "Automated Craigslist scraping", "Login bots that mine posts", "Mass contact extraction"];
+  const ok = ["Official job APIs via the scheduled feed (Remotive, Greenhouse, Lever)", "Google Programmable Search API (your own key)", "Manual entry", "Pasting a post you found", "Craigslist saved-search ALERT EMAIL (forwarded to yourself, then pasted)", "Google Alert email (pasted)", "Referrals from your own site/form", "Community boards with email/RSS you subscribe to"];
+  const no = ["Automated Facebook collection", "Automated Facebook group crawling", "Automated Craigslist scraping", "Scraping google.com (we use the official API)", "Login bots that mine posts", "Mass contact extraction", "Auto-sending / auto-outreach"];
   return el("div", {}, [
     el("div", { class: "card__title", text: "Allowed" }),
     el("ul", { style: { marginBottom: "var(--sp-12)" } }, ok.map((x) => el("li", { class: "hint", text: "✓ " + x }))),

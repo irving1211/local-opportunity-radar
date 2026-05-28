@@ -19,8 +19,25 @@ For every lead you add (by manual entry or by pasting a post / forwarded alert e
 
 - **No scraping / crawling / auto-fetch of any lead source.** A hardened Content-Security-Policy + a single audited network module (`js/engine/net.js`) make this true by construction. `tests/guardrail-audit.mjs` proves it.
 - **No auto-send.** The app drafts messages and gives you copy / `mailto:` / `sms:` actions — *you* decide whether to send.
-- **All data stays on your device** (IndexedDB). Nothing is uploaded anywhere.
-- The **only** network call the app can ever make is the optional, off-by-default **AI Enhance** to Anthropic using *your own* API key.
+- **All lead data stays on your device** (IndexedDB). Nothing is uploaded.
+- Network access is funnelled through one audited module (`js/engine/net.js`) with a hard allowlist: same-origin (`feed.json`), `api.anthropic.com` (opt-in AI Enhance, your key), and `www.googleapis.com` (opt-in Google search, your key). Arbitrary origins are rejected — no scraping is possible from the client.
+
+## Automatic lead ingestion
+
+Real opportunities populate from **official, compliant APIs only** — never scraping.
+
+**Architecture:** a scheduled **GitHub Action** (`.github/workflows/ingest.yml`, every 6h) runs `ingest/run.mjs`, which calls official public APIs, normalizes + dedupes the results, and commits a static **`feed.json`**. GitHub Pages redeploys, and the PWA pulls that **same-origin** feed on open (throttled) and on the dashboard **"Find leads"** button. This keeps the app static, keeps any secrets server-side, and needs no CORS or client keys.
+
+**Connectors** (`ingest/connectors/`, edit `ingest/sources.json` to tune):
+- **Remotive** — official public API, no key. Remote tech/automation/web/freelance roles.
+- **Greenhouse** — official board API, no key. Add company board tokens (`gitlab`, `figma`, …).
+- **Lever** — official postings API, no key. Add company slugs.
+
+**Google Programmable Search** (optional, on-device): add your own API key + engine id (cx) in **Settings → Google search**, then "Search Google now". Uses the official Custom Search JSON API (never scrapes google.com); the key lives only on your device.
+
+**Craigslist / Facebook:** never scraped or crawled. Use the manual paste flow (Add → Smart paste) for Craigslist saved-search **alert emails** or anything you found yourself.
+
+Every ingested lead shows its **source, source detail, original-posting link, the query that surfaced it, and posted/found dates** across the dashboard, inbox, pipeline, and detail views.
 
 ## Run it
 

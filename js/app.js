@@ -2,6 +2,7 @@ import * as store from "./store.js";
 import { APP_VERSION, DB_SCHEMA_VERSION, SW_SCOPE } from "./config.js";
 import { el, clear } from "./util.js";
 import { icon, toast } from "./ui/components.js";
+import { ingestFeed } from "./ingest.js";
 import { renderDashboard } from "./ui/dashboard.js";
 import { renderInbox } from "./ui/inbox.js";
 import { renderDetail } from "./ui/detail.js";
@@ -113,6 +114,13 @@ async function boot() {
     await render();
     registerSW();
     window.__lorBootOk && window.__lorBootOk();
+
+    // Auto-pull the compliant same-origin feed (throttled) so leads populate without manual action.
+    if (ctx.flags.feedIngest && !store.state.safeMode) {
+      ingestFeed(ctx.settings).then((r) => {
+        if (r && r.added > 0) { toast(`${r.added} new lead${r.added === 1 ? "" : "s"} from your sources`, "success"); if (/^#\/(dashboard|inbox)/.test(location.hash)) render(); }
+      }).catch((e) => store.logError("auto-ingest", e.message, e.stack));
+    }
   } catch (e) {
     store.logError("boot", e.message, e.stack);
     window.__lorBootFail ? window.__lorBootFail("The app failed to start.", (e && e.stack) || e.message) : console.error(e);
@@ -132,6 +140,8 @@ async function exportBackup() {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 ctx.exportBackup = exportBackup;
+ctx.refreshFeed = () => ingestFeed(ctx.settings, { force: true });
+ctx.runGoogleSearch = async () => { const { runGoogleSearch } = await import("./connectors/google.js"); return runGoogleSearch(ctx.settings); };
 
 function registerSW() {
   if (!("serviceWorker" in navigator)) return;

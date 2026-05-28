@@ -1,0 +1,11 @@
+{
+  "_comment": "Connector config for the scheduled ingestion pipeline (ingest/run.mjs). Edit + commit to tune what the feed pulls. Remotive needs no setup. Greenhouse/Lever: add company board tokens. Google Custom Search runs ON-DEVICE in the app with your own key (Settings).",
+  "remotive": {
+    "categories": ["software-dev", "design", "data", "devops-sysadmin", "all-others"],
+    "searches": ["automation", "wordpress", "zapier", "shopify", "no code"],
+    "limit": 14
+  },
+  "greenhouse": { "boards": ["gitlab", "figma", "airtable", "discord"], "perBoard": 16 },
+  "lever": { "companies": [] },
+  "caps": { "maxRecords": 200 }
+}

@@ -27,7 +27,7 @@ export async function renderDashboard(ctx) {
       el("div", { class: "eyebrow", text: new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) }),
       el("h1", { class: "display", text: "Radar", style: { marginTop: "var(--sp-4)" } }),
     ]),
-    el("div", { class: "row", style: { gap: "var(--sp-8)" } }, [gradeBadgeLogo()]),
+    el("button", { class: "btn btn--secondary btn--sm", title: "Find new leads from your sources", onclick: () => doRefresh(ctx) }, [icon("refresh", "btn__icon"), "Find leads"]),
   ]));
 
   // Backup nudge
@@ -43,9 +43,10 @@ export async function renderDashboard(ctx) {
 
   if (leads.length === 0) {
     wrap.appendChild(el("div", { class: "card" }, [emptyState("radar", "No leads yet", "Add your first opportunity to get a score, a reply, and a price.")]));
-    wrap.appendChild(el("button", { class: "btn btn--primary btn--full", style: { marginTop: "var(--sp-16)" }, text: "Add a lead", onclick: () => ctx.navigate("#/add") }));
+    wrap.appendChild(el("button", { class: "btn btn--primary btn--full", style: { marginTop: "var(--sp-16)" }, text: "Add a lead manually", onclick: () => ctx.navigate("#/add") }));
+    wrap.appendChild(el("button", { class: "btn btn--secondary btn--full", style: { marginTop: "var(--sp-8)" }, onclick: () => doRefresh(ctx) }, [icon("refresh", "btn__icon"), "Find leads from your sources"]));
     wrap.appendChild(el("button", {
-      class: "btn btn--secondary btn--full",
+      class: "btn btn--ghost btn--full",
       style: { marginTop: "var(--sp-8)" },
       text: "Load example leads",
       onclick: async () => {
@@ -118,8 +119,14 @@ export async function renderDashboard(ctx) {
   return wrap;
 }
 
-function gradeBadgeLogo() {
-  return el("div", { class: "row", style: { gap: "6px", color: "var(--accent)" } }, [icon("radar", "ico")]);
+async function doRefresh(ctx) {
+  ctx.toast("Checking your sources…");
+  try {
+    const r = await ctx.refreshFeed();
+    if (r && r.error) ctx.toast("Couldn't load feed: " + r.error, "error");
+    else ctx.toast(r && r.added > 0 ? `Added ${r.added} new lead${r.added === 1 ? "" : "s"}` : "No new leads right now", r && r.added > 0 ? "success" : "");
+  } catch (e) { ctx.toast(e.message, "error"); }
+  ctx.reload();
 }
 
 export function leadRow(lead, onClick) {

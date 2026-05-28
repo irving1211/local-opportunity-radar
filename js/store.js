@@ -23,12 +23,20 @@ export function openDB() {
         es.createIndex("byIdem", "idempotencyKey", { unique: false });
       }
       if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "k" });
-      // v1 → v2: backfill sourceDetail on existing leads (safe, in the upgrade transaction).
-      if (ev.oldVersion && ev.oldVersion < 2) {
+      // Backfill new fields on existing leads (safe, inside the upgrade transaction).
+      // v1→v2 added sourceDetail; v2→v3 added sourceUrl/foundViaQuery/postedAt/fetchedAt/ingested.
+      if (ev.oldVersion && ev.oldVersion < 3) {
         try {
           const os = ev.target.transaction.objectStore("leads");
           const cur = os.openCursor();
-          cur.onsuccess = () => { const c = cur.result; if (!c) return; const v = c.value; if (v && v.sourceDetail === undefined) { v.sourceDetail = ""; c.update(v); } c.continue(); };
+          cur.onsuccess = () => {
+            const c = cur.result; if (!c) return;
+            const v = c.value || {}; let dirty = false;
+            const def = { sourceDetail: "", sourceUrl: "", foundViaQuery: "", postedAt: null, fetchedAt: null, ingested: false };
+            for (const k in def) if (v[k] === undefined) { v[k] = def[k]; dirty = true; }
+            if (dirty) c.update(v);
+            c.continue();
+          };
         } catch (e) { /* fresh DB has no rows to migrate */ }
       }
     };

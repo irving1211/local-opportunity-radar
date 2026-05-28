@@ -1,22 +1,24 @@
 /* Service worker (PLAN.md §3). Network-first for entry documents (so new deploys + rollbacks
    are picked up and a stale bootstrap can't pin); cache-first for static JS/CSS/SVG assets.
    Cache name is versioned; old caches purge on activate. App DATA never goes over the network. */
-const APP_VERSION = "1.0.2";
+const APP_VERSION = "1.1.0";
 const CACHE = "lor-prod-" + APP_VERSION;
 
 const PRECACHE = [
   "./", "./index.html", "./manifest.webmanifest", "./version.json",
   "./css/tokens.css", "./css/base.css", "./css/components.css", "./css/screens.css",
   "./js/boot.js", "./js/app.js", "./js/config.js", "./js/util.js", "./js/schema.js",
-  "./js/store.js", "./js/leadops.js", "./js/seed.js",
+  "./js/store.js", "./js/leadops.js", "./js/seed.js", "./js/ingest.js",
   "./js/engine/score.js", "./js/engine/pricing.js", "./js/engine/message.js",
   "./js/engine/fulfillment.js", "./js/engine/parse.js", "./js/engine/net.js", "./js/engine/ai.js",
+  "./js/connectors/google.js",
   "./js/ui/components.js", "./js/ui/dashboard.js", "./js/ui/inbox.js", "./js/ui/detail.js",
   "./js/ui/add.js", "./js/ui/pipeline.js", "./js/ui/settings.js", "./js/ui/diagnostics.js",
   "./assets/icon.svg", "./assets/icon-192.png", "./assets/icon-512.png", "./assets/icon-180.png",
 ];
 
-const NETWORK_FIRST = [/index\.html$/, /\.webmanifest$/, /version\.json$/, /\/$/];
+// feed.json is network-first too — always try for fresh leads, fall back to cache offline.
+const NETWORK_FIRST = [/index\.html$/, /\.webmanifest$/, /version\.json$/, /feed\.json$/, /\/$/];
 
 self.addEventListener("install", (e) => {
   e.waitUntil((async () => {

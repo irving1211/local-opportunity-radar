@@ -300,6 +300,14 @@ export async function renderDetail(ctx, id) {
   // ---------- Raw post ----------
   function sectionRaw() {
     const sec = el("div", { class: "section" }, [el("h2", { text: "Original post" })]);
+    if (lead.ingested || lead.sourceUrl) {
+      const dates = [lead.postedAt ? "Posted " + fmtDate(lead.postedAt) : null, lead.fetchedAt ? "Found " + fmtDate(lead.fetchedAt) : null].filter(Boolean).join(" · ");
+      sec.appendChild(el("div", { class: "card stack", style: { marginBottom: "var(--sp-8)" } }, [
+        lead.sourceUrl ? el("a", { class: "btn btn--secondary btn--sm", href: lead.sourceUrl, target: "_blank", rel: "noopener noreferrer" }, [icon("link", "btn__icon"), "Open original posting"]) : null,
+        lead.foundViaQuery ? el("div", { class: "hint", text: "Found via: " + lead.foundViaQuery }) : null,
+        dates ? el("div", { class: "hint", text: dates }) : null,
+      ]));
+    }
     sec.appendChild(el("div", { class: "rawbox", text: lead.rawText || "(no text)" }));
     if (lead.contact && lead.contact.raw) sec.appendChild(el("div", { class: "hint", style: { marginTop: "var(--sp-8)" }, text: "Contact: " + lead.contact.raw + " (" + lead.contact.type + ")" }));
     const re = el("button", { class: "btn btn--ghost btn--sm", style: { marginTop: "var(--sp-12)" }, onclick: () => reanalyze() }, [icon("refresh", "btn__icon"), "Re-run analysis"]);

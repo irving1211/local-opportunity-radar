@@ -6,10 +6,11 @@ export const CATEGORY_LABELS = {
   "home-service": "Home service", web: "Website", automation: "Automation",
   app: "Custom app", design: "Design", other: "Other",
 };
-export const SOURCES = ["manual", "paste", "craigslist-alert", "google-alert", "referral", "facebook-group", "board", "other"];
+export const SOURCES = ["manual", "paste", "craigslist-alert", "google-alert", "referral", "facebook-group", "board", "remotive", "greenhouse", "lever", "google-search", "other"];
 export const SOURCE_LABELS = {
   manual: "Manual entry", paste: "Pasted post", "craigslist-alert": "Craigslist alert",
-  "google-alert": "Google Alert", referral: "Referral", "facebook-group": "Facebook group", board: "Community board", other: "Other",
+  "google-alert": "Google Alert", referral: "Referral", "facebook-group": "Facebook group", board: "Community board",
+  remotive: "Remotive", greenhouse: "Greenhouse", lever: "Lever", "google-search": "Google Search", other: "Other",
 };
 // Per-source display metadata (PLAN.md §9 source visibility). icon = key in ui/components icon set; tint = chip color var.
 export const SOURCE_META = {
@@ -20,8 +21,14 @@ export const SOURCE_META = {
   referral: { short: "Referral", icon: "user", tint: "var(--success)" },
   "facebook-group": { short: "FB group", icon: "users", tint: "#3B6FE0" },
   board: { short: "Board", icon: "community", tint: "#0EA5A5" },
+  remotive: { short: "Remotive", icon: "briefcase", tint: "#16A36B" },
+  greenhouse: { short: "Greenhouse", icon: "briefcase", tint: "#2E8B57" },
+  lever: { short: "Lever", icon: "briefcase", tint: "#5C6AC4" },
+  "google-search": { short: "Google", icon: "search", tint: "#EA8600" },
   other: { short: "Other", icon: "tag", tint: "var(--text-3)" },
 };
+// Sources that arrive automatically from a connector/feed (vs. manually entered).
+export const INGESTED_SOURCES = new Set(["remotive", "greenhouse", "lever", "google-search"]);
 // What to show as the source line: prefer the user's specific detail, else the label.
 export function sourceText(lead) {
   const meta = SOURCE_META[lead.source] || SOURCE_META.other;
@@ -80,6 +87,12 @@ export function defaultSettings() {
     },
     weights: { proximity: 1, urgency: 1, budgetSignal: 1.3, skillsMatch: 1.5, easeOfClosing: 1, repeatPotential: 1.1, portfolioValue: 0.8 },
     ai: { enabled: false, apiKey: "", model: "claude-haiku-4-5-20251001" },
+    feed: { lastFetchAt: null, autoRefresh: true },
+    google: {
+      apiKey: "", cx: "",
+      queries: ["need handyman near me", "small business looking for website help", "need a custom app built", "automate invoices small business"],
+      location: "Massachusetts", remoteOnly: false,
+    },
     theme: "system",
     lastBackupAt: null,
   };
@@ -94,6 +107,11 @@ export function newLead(partial = {}) {
     updatedAt: t,
     source: SOURCES.includes(partial.source) ? partial.source : "manual",
     sourceDetail: (partial.sourceDetail || "").trim(),
+    sourceUrl: (partial.sourceUrl || "").trim(),         // canonical link to the original posting (if any)
+    foundViaQuery: (partial.foundViaQuery || "").trim(), // which saved search/connector query surfaced it
+    postedAt: partial.postedAt || null,                  // when the opportunity was posted (from the source)
+    fetchedAt: partial.fetchedAt || null,                // when our connector pulled it
+    ingested: !!partial.ingested,                        // true = came from a connector/feed, not manual
     title: (partial.title || "").trim(),
     rawText: partial.rawText || "",
     location: (partial.location || "").trim(),
@@ -136,6 +154,8 @@ export function normalizeContact(raw) {
 }
 
 export function fingerprint(lead) {
+  // A canonical source URL is the strongest dedupe key for ingested postings.
+  if (lead.sourceUrl) return hash("url|" + normalize(lead.sourceUrl));
   const c = lead.contact ? (lead.contact.value || lead.contact.raw || "") : "";
   return hash(normalize(lead.title) + "|" + normalize((lead.rawText || "").slice(0, 120)) + "|" + normalize(c));
 }

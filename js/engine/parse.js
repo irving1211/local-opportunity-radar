@@ -19,7 +19,7 @@ const URGENT = ["asap", "urgent", "today", "tonight", "emergency", "right away",
 const SOON = ["this week", "this weekend", "soon", "by friday", "by monday"];
 
 function classify(text) {
-  const t = text.toLowerCase();
+  const t = (text || "").toLowerCase();
   let best = "other", bestN = 0;
   for (const [cat, words] of Object.entries(CAT_WORDS)) {
     const n = words.reduce((a, w) => a + (t.includes(w) ? 1 : 0), 0);
@@ -27,6 +27,9 @@ function classify(text) {
   }
   return { category: best, confident: bestN > 0 };
 }
+// Shared category classifier (used by the PWA ingest + the Node ingestion pipeline).
+export function classifyCategory(text) { return classify(text).category; }
+export function urgencyOf2(text) { return urgencyOf(text); }
 function urgencyOf(text) {
   const t = text.toLowerCase();
   if (URGENT.some((w) => t.includes(w))) return "asap";
