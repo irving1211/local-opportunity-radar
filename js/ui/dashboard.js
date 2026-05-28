@@ -3,6 +3,7 @@ import { el } from "../util.js";
 import { icon, gradeBadge, chip, emptyState } from "./components.js";
 import { STAGE_LABELS, RECOMMENDATIONS } from "../schema.js";
 import { fmtRelative } from "../util.js";
+import { countExampleLeads, loadExampleLeads, removeExampleLeads } from "../seed.js";
 
 const isDue = (iso) => iso && new Date(iso).getTime() <= Date.now() + 86400000;
 
@@ -17,6 +18,8 @@ export function needsAction(lead) {
 
 export async function renderDashboard(ctx) {
   const leads = await store.getAllLeads();
+  const exampleCount = countExampleLeads(leads);
+  const allExamples = leads.length > 0 && exampleCount === leads.length;
   const wrap = el("div");
 
   wrap.appendChild(el("div", { class: "head" }, [
@@ -38,7 +41,38 @@ export async function renderDashboard(ctx) {
   if (leads.length === 0) {
     wrap.appendChild(el("div", { class: "card" }, [emptyState("radar", "No leads yet", "Add your first opportunity to get a score, a reply, and a price.")]));
     wrap.appendChild(el("button", { class: "btn btn--primary btn--full", style: { marginTop: "var(--sp-16)" }, text: "Add a lead", onclick: () => ctx.navigate("#/add") }));
+    wrap.appendChild(el("button", {
+      class: "btn btn--secondary btn--full",
+      style: { marginTop: "var(--sp-8)" },
+      text: "Load example leads",
+      onclick: async () => {
+        const added = await loadExampleLeads(ctx.settings);
+        ctx.toast(added ? `Loaded ${added} example leads` : "Example leads are already loaded", added ? "success" : "");
+        ctx.reload();
+      },
+    }));
     return wrap;
+  }
+
+  if (exampleCount > 0) {
+    wrap.appendChild(el("div", { class: "card", style: { marginBottom: "var(--sp-16)", borderColor: "var(--accent)" } }, [
+      el("div", { class: "stack" }, [
+        el("div", { style: { fontWeight: "500" }, text: allExamples ? "These are example leads" : `${exampleCount} example lead${exampleCount === 1 ? "" : "s"} still in this app` }),
+        el("div", { class: "hint", text: allExamples ? "The app is working, but you're still looking at demo data. Add your own lead or remove these examples to start using it for real." : "You can keep these for testing or remove them now." }),
+        el("div", { class: "row", style: { gap: "var(--sp-8)", flexWrap: "wrap" } }, [
+          el("button", { class: "btn btn--primary btn--sm", text: "Add a real lead", onclick: () => ctx.navigate("#/add") }),
+          el("button", {
+            class: "btn btn--secondary btn--sm",
+            text: "Remove example leads",
+            onclick: async () => {
+              const removed = await removeExampleLeads();
+              ctx.toast(removed ? `Removed ${removed} example leads` : "No example leads found", removed ? "success" : "");
+              ctx.reload();
+            },
+          }),
+        ]),
+      ]),
+    ]));
   }
 
   // Stats

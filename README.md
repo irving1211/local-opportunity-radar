@@ -56,4 +56,6 @@ Vanilla JS (ES modules), plain CSS, IndexedDB, a service worker. **No framework,
 - `docs/spec.md` — the full design spec (5 rounds of adversarial review baked in)
 - `docs/RUNBOOK.md` — recovery procedures
 
+The app starts empty on first run. Example leads are optional and can be loaded manually from the dashboard or settings.
+
 See `docs/spec.md` for the complete design and the 32 review findings that shaped it.

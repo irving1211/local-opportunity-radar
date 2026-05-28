@@ -1,7 +1,7 @@
 /* Service worker (PLAN.md §3). Network-first for entry documents (so new deploys + rollbacks
    are picked up and a stale bootstrap can't pin); cache-first for static JS/CSS/SVG assets.
    Cache name is versioned; old caches purge on activate. App DATA never goes over the network. */
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 const CACHE = "lor-prod-" + APP_VERSION;
 
 const PRECACHE = [

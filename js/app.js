@@ -2,7 +2,6 @@ import * as store from "./store.js";
 import { APP_VERSION, DB_SCHEMA_VERSION, SW_SCOPE } from "./config.js";
 import { el, clear } from "./util.js";
 import { icon, toast } from "./ui/components.js";
-import { seedIfEmpty } from "./seed.js";
 import { renderDashboard } from "./ui/dashboard.js";
 import { renderInbox } from "./ui/inbox.js";
 import { renderDetail } from "./ui/detail.js";
@@ -102,9 +101,6 @@ async function boot() {
     // Version-skew / safe-mode banner
     if (store.state.safeMode) banner("error", store.state.safeReason, "Export backup", () => exportBackup());
     if (store.state.settingsReset) banner("warning", "Your settings were from a newer version and were reset to defaults (a backup was kept).");
-
-    // First-run seed (only if truly empty and not in safe mode)
-    if (!store.state.safeMode) await seedIfEmpty(ctx.settings);
 
     // Storage-eviction detection
     if (await store.checkDataLoss()) {
