@@ -30,6 +30,8 @@
   <meta name="description" content="Personal hub to find, score, and prepare responses to local side-job opportunities. Manual outreach only." />
   <title>Local Opportunity Radar</title>
   <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/inter.woff2" crossorigin="anonymous" />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/space-grotesk.woff2" crossorigin="anonymous" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/icon-180.png" />
   <link rel="stylesheet" href="css/tokens.css" />
@@ -66,7 +68,7 @@
         <button id="bf-reset" class="btn btn--danger" type="button">Reset local data</button>
         <button id="bf-retry" class="btn btn--primary" type="button">Try again</button>
       </div>
-      <p class="hint" style="margin-top:8px">"Reset local data" fixes a stuck database by deleting it — export a backup first if you have leads to keep.</p>
+      <p class="hint boot-fail__note">"Reset local data" fixes a stuck database by deleting it — export a backup first if you have leads to keep.</p>
       <details class="boot-fail__details">
         <summary>Technical details</summary>
         <pre id="bf-detail"></pre>

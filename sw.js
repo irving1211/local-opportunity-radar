@@ -1,7 +1,7 @@
 /* Service worker (PLAN.md §3). Network-first for entry documents (so new deploys + rollbacks
    are picked up and a stale bootstrap can't pin); cache-first for static JS/CSS/SVG assets.
    Cache name is versioned; old caches purge on activate. App DATA never goes over the network. */
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
 const CACHE = "lor-prod-" + APP_VERSION;
 
 const PRECACHE = [
@@ -15,6 +15,7 @@ const PRECACHE = [
   "./js/ui/components.js", "./js/ui/dashboard.js", "./js/ui/inbox.js", "./js/ui/detail.js",
   "./js/ui/add.js", "./js/ui/pipeline.js", "./js/ui/settings.js", "./js/ui/diagnostics.js",
   "./assets/icon.svg", "./assets/icon-192.png", "./assets/icon-512.png", "./assets/icon-180.png",
+  "./assets/fonts/inter.woff2", "./assets/fonts/space-grotesk.woff2",
 ];
 
 // feed.json is network-first too — always try for fresh leads, fall back to cache offline.

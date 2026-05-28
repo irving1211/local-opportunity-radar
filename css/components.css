@@ -168,6 +168,7 @@
 .boot-fail__card { max-width: 440px; }
 .boot-fail__card h1 { margin-bottom: var(--sp-8); }
 .boot-fail__actions { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin: var(--sp-16) 0; }
+.boot-fail__note { margin-top: var(--sp-8); }
 .boot-fail__details { margin-top: var(--sp-16); color: var(--text-3); font-size: var(--fs-12); }
 .boot-fail pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-subtle); padding: var(--sp-12); border-radius: var(--r-sm); margin-top: var(--sp-8); }
 
