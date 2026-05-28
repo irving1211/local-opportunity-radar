@@ -115,7 +115,10 @@ export async function renderDashboard(ctx) {
     na.sort((a, b) => (b.analysis?.fitScore || 0) - (a.analysis?.fitScore || 0));
     for (const lead of na.slice(0, 8)) list.appendChild(leadRow(lead, () => ctx.navigate("#/lead/" + lead.id)));
     wrap.appendChild(list);
+    if (na.length > 8) wrap.appendChild(el("div", { class: "hint center", style: { marginTop: "var(--sp-8)" }, text: `+ ${na.length - 8} more need attention` }));
   }
+  // Always offer the full, browsable list (the inbox has all leads + filters)
+  wrap.appendChild(el("button", { class: "btn btn--secondary btn--full", style: { marginTop: "var(--sp-16)" }, onclick: () => ctx.navigate("#/inbox") }, [`Browse all ${leads.length} leads`, icon("right", "btn__icon")]));
   return wrap;
 }
 

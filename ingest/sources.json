@@ -5,7 +5,9 @@
     "searches": ["automation", "wordpress", "zapier", "shopify", "no code"],
     "limit": 14
   },
-  "greenhouse": { "boards": ["gitlab", "figma", "airtable", "discord"], "perBoard": 16 },
+  "greenhouse": { "boards": ["mattermost", "calendly", "temporaltechnologies"], "perBoard": 16 },
   "lever": { "companies": [] },
+  "hackernews": { "enabled": true, "limit": 70 },
+  "denylist": ["stripe", "google", "alphabet", "meta", "facebook", "amazon", "aws", "apple", "microsoft", "netflix", "airbnb", "uber", "lyft", "gitlab", "github", "figma", "discord", "anthropic", "openai", "shopify", "coinbase", "datadog", "snowflake", "databricks", "nvidia", "salesforce", "oracle", "adobe", "atlassian", "twilio", "cloudflare", "doordash", "instacart", "robinhood", "brex", "plaid", "notion", "canva", "spotify", "tiktok", "bytedance", "reddit", "pinterest", "snap", "block", "square", "paypal", "intuit", "ibm", "intel", "dell", "cisco", "vmware", "sap", "workday", "servicenow"],
   "caps": { "maxRecords": 200 }
 }

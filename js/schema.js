@@ -6,11 +6,11 @@ export const CATEGORY_LABELS = {
   "home-service": "Home service", web: "Website", automation: "Automation",
   app: "Custom app", design: "Design", other: "Other",
 };
-export const SOURCES = ["manual", "paste", "craigslist-alert", "google-alert", "referral", "facebook-group", "board", "remotive", "greenhouse", "lever", "google-search", "other"];
+export const SOURCES = ["manual", "paste", "craigslist-alert", "google-alert", "referral", "facebook-group", "board", "remotive", "greenhouse", "lever", "hackernews", "google-search", "other"];
 export const SOURCE_LABELS = {
   manual: "Manual entry", paste: "Pasted post", "craigslist-alert": "Craigslist alert",
   "google-alert": "Google Alert", referral: "Referral", "facebook-group": "Facebook group", board: "Community board",
-  remotive: "Remotive", greenhouse: "Greenhouse", lever: "Lever", "google-search": "Google Search", other: "Other",
+  remotive: "Remotive", greenhouse: "Greenhouse", lever: "Lever", hackernews: "HN Who's Hiring", "google-search": "Google Search", other: "Other",
 };
 // Per-source display metadata (PLAN.md §9 source visibility). icon = key in ui/components icon set; tint = chip color var.
 export const SOURCE_META = {
@@ -24,11 +24,12 @@ export const SOURCE_META = {
   remotive: { short: "Remotive", icon: "briefcase", tint: "#16A36B" },
   greenhouse: { short: "Greenhouse", icon: "briefcase", tint: "#2E8B57" },
   lever: { short: "Lever", icon: "briefcase", tint: "#5C6AC4" },
+  hackernews: { short: "HN hiring", icon: "briefcase", tint: "#FF6600" },
   "google-search": { short: "Google", icon: "search", tint: "#EA8600" },
   other: { short: "Other", icon: "tag", tint: "var(--text-3)" },
 };
 // Sources that arrive automatically from a connector/feed (vs. manually entered).
-export const INGESTED_SOURCES = new Set(["remotive", "greenhouse", "lever", "google-search"]);
+export const INGESTED_SOURCES = new Set(["remotive", "greenhouse", "lever", "hackernews", "google-search"]);
 // What to show as the source line: prefer the user's specific detail, else the label.
 export function sourceText(lead) {
   const meta = SOURCE_META[lead.source] || SOURCE_META.other;

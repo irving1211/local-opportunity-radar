@@ -14,8 +14,9 @@ function toRecords(jobs, foundVia) {
     location: j.candidate_required_location || "Remote",
     postedAt: j.publication_date || null,
     foundViaQuery: foundVia,
-    tags: j.tags,
+    tags: [j.job_type, ...(j.tags || [])],
     remote: true,
+    contractSignal: /freelance|contract/i.test(j.job_type || ""),
   }));
 }
 

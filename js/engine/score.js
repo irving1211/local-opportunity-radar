@@ -10,6 +10,7 @@ const RECUR_WORDS = ["monthly", "weekly", "ongoing", "recurring", "retainer", "m
 const SHOWCASE_WORDS = ["redesign", "brand", "launch", "new website", "rebuild", "from scratch", "portfolio", "showcase"];
 const LOWBUDGET_WORDS = ["cheap", "low budget", "tight budget", "free", "exposure", "not much", "small budget", "beer money"];
 const CLEAR_WORDS = ["need", "looking for", "want", "help with", "fix", "build", "install", "repair", "set up", "setup"];
+const CONTRACT_WORDS = ["contract", "freelance", "1099", "fractional", "part-time", "part time", "temporary", "consultant", "consulting", "project-based", "hourly", "gig", "short-term", "interim"];
 
 export function extractBudget(text) {
   const m = [...text.matchAll(/\$\s?([0-9][0-9,]*)(?:\s?[-–]\s?\$?\s?([0-9][0-9,]*))?/g)];
@@ -70,13 +71,18 @@ function dSkills(lead, s) {
   let v = 72 + Math.min(overlap * 8, 24);
   return { value: clamp(v), why: overlap ? "Matches your skills + specific keywords." : "Matches a service you offer." };
 }
+export function isContractLead(lead) {
+  const t = ((lead.title || "") + " " + (lead.rawText || "")).toLowerCase();
+  return has(t, CONTRACT_WORDS);
+}
 function dEase(lead) {
-  const t = lead.rawText.toLowerCase();
+  const t = ((lead.title || "") + " " + lead.rawText).toLowerCase();
   let v = 50;
   const why = [];
   if (lead.contact && (lead.contact.type === "email" || lead.contact.type === "phone")) { v += 22; why.push("direct contact available"); }
   if (has(t, CLEAR_WORDS)) { v += 14; why.push("clear ask"); }
-  if (t.length > 600) { v -= 10; why.push("long/complex post"); }
+  if (has(t, CONTRACT_WORDS)) { v += 16; why.push("contract / no payroll — ideal fit"); }
+  if (t.length > 800) { v -= 8; why.push("long/complex post"); }
   if (/\b(quote|estimate|how much|price)\b/.test(t)) { v += 8; why.push("already price-shopping"); }
   return { value: clamp(v), why: why.length ? why.join(", ") + "." : "Average ease to close." };
 }

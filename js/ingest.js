@@ -22,7 +22,8 @@ export function recordToLead(rec) {
     category: rec.category || "other",
     urgency: rec.urgency || "unknown",
     budgetClue: rec.budgetClue || "",
-    contact: rec.contact || normalizeContact(rec.contactRaw || ""),
+    // For job postings there's no personal email — the apply/posting URL IS the contact path.
+    contact: rec.contact || normalizeContact(rec.contactRaw || rec.sourceUrl || ""),
   });
 }
 

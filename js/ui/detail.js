@@ -157,9 +157,17 @@ export async function renderDetail(ctx, id) {
         a.addEventListener("click", () => recordSnapshot(lead, { channel: "sms", tone, variant, text }));
         actions.appendChild(a);
       }
+      // Job postings: the apply/contact path is the posting page (no personal email).
+      if (lead.sourceUrl) {
+        const a = el("a", { class: "btn btn--secondary btn--sm", href: lead.sourceUrl, target: "_blank", rel: "noopener noreferrer" }, [icon("link", "btn__icon"), "Open posting to apply"]);
+        a.addEventListener("click", () => recordSnapshot(lead, { channel: "posting", tone, variant, text }));
+        actions.appendChild(a);
+      }
       msgHost.appendChild(box);
       msgHost.appendChild(actions);
-      if (lead.contact && (lead.contact.type === "none" || lead.contact.type === "other"))
+      if (lead.ingested && lead.sourceUrl)
+        msgHost.appendChild(el("div", { class: "hint", style: { marginTop: "var(--sp-8)" }, text: "This is a company posting — copy your pitch and send it through their posting/contact page. You always send manually." }));
+      else if (lead.contact && (lead.contact.type === "none" || lead.contact.type === "other"))
         msgHost.appendChild(el("div", { class: "hint", style: { marginTop: "var(--sp-8)" }, text: "No tappable contact — copy the message and reach out manually. Outreach is always your call." }));
     };
 

@@ -1,7 +1,8 @@
 // Deterministic engine tests (PLAN.md §13). Run: node tests/engine.test.mjs
 import { analyze } from "../js/engine/score.js";
 import { price } from "../js/engine/pricing.js";
-import { buildMessages } from "../js/engine/message.js";
+import { buildMessages, isHiringLead } from "../js/engine/message.js";
+import { isContractLead } from "../js/engine/score.js";
 import { fulfillment } from "../js/engine/fulfillment.js";
 import { parseGeneric, parse } from "../js/engine/parse.js";
 import { defaultSettings, newLead, normalizeContact, fingerprint, SOURCES, SOURCE_META, sourceText } from "../js/schema.js";
@@ -29,8 +30,9 @@ for (const [k, lead] of Object.entries(fixtures)) {
 }
 
 // 2. determinism
+const stripTs = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.computedAt; return c; };
 const a1 = analyze(fixtures.bigApp, S), a2 = analyze(fixtures.bigApp, S);
-ok(JSON.stringify(a1) === JSON.stringify(a2), "analyze is deterministic");
+ok(JSON.stringify(stripTs(a1)) === JSON.stringify(stripTs(a2)), "analyze is deterministic (ignoring computedAt timestamp)");
 
 // 3. scoring direction: strong lead beats junk lead
 ok(analyze(fixtures.bigApp, S).fitScore > analyze(fixtures.lowLogo, S).fitScore, "strong app lead scores higher than free-logo lead");
@@ -103,6 +105,25 @@ ok(SOURCES.every((s) => SOURCE_META[s]), "every source has SOURCE_META");
   const legacy = { id: "x", title: "t", source: "manual", rawText: "r" };
   ok(newLead(legacy).sourceDetail === "", "legacy lead backfills empty sourceDetail");
   ok(newLead({ source: "not-a-real-source" }).source === "manual", "unknown source falls back to manual");
+}
+
+// 11. hiring-company pitch for ingested job leads + contract detection
+{
+  const jobLead = newLead({ source: "remotive", ingested: true, sourceDetail: "Acme Co", title: "Senior Automation Engineer", rawText: "We are hiring a contract automation engineer to build internal tools.", sourceUrl: "https://x/y" });
+  ok(isHiringLead(jobLead), "ingested job source is a hiring lead");
+  ok(isHiringLead(newLead({ source: "hackernews", ingested: true, title: "Founding Eng", sourceDetail: "TinyCo" })), "HN is a hiring lead");
+  ok(!isHiringLead(newLead({ source: "manual", title: "fix sink" })), "manual lead is not a hiring lead");
+  const a = analyze(jobLead, S);
+  const m = buildMessages(jobLead, a, price({ ...jobLead, pricingInputs: a.suggestedPricingInputs }, a, S), S, "professional");
+  ok(/contract/i.test(m.first_normal), "hiring pitch mentions contract");
+  ok(/hiring|opening/i.test(m.first_normal), "hiring pitch references their opening");
+  ok(!/\b(AI|ChatGPT|Claude|GPT)\b/.test(m.first_normal), "hiring pitch has no AI keywords");
+  ok(isContractLead(jobLead), "contract terms detected");
+  ok(!isContractLead(newLead({ title: "logo", rawText: "need a logo" })), "non-contract lead not flagged");
+  // contract leads score easier to close
+  const plain = newLead({ source: "web", title: "website", rawText: "need a website built for my shop" });
+  const contractVer = newLead({ source: "web", title: "website (contract)", rawText: "need a website built on a freelance contract basis" });
+  ok(analyze(contractVer, S).dimensions.easeOfClosing.value >= analyze(plain, S).dimensions.easeOfClosing.value, "contract lead scores >= on ease");
 }
 
 console.log(`\nengine tests: ${pass} passed, ${fail} failed`);

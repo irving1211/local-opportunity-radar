@@ -37,25 +37,50 @@ function cta(tone) {
   }[tone];
 }
 
+const JOB_SOURCES = ["remotive", "greenhouse", "lever", "hackernews"];
+export function isHiringLead(lead) { return !!lead && !!lead.ingested && JOB_SOURCES.includes(lead.source); }
+
 export function buildMessages(lead, analysis, pricing, settings, tone = "local-friendly") {
   if (!TONES.includes(tone)) tone = "local-friendly";
   const n = need(lead, analysis);
   const cred = credibility(settings, lead);
-  const g = greeting(tone), sign = signoff(tone), close = cta(tone);
-  const priceHint = pricing ? `Most jobs like this land around ${fmtMoney(pricing.standard)} depending on specifics.` : "";
+  const g = greeting(tone), sign = signoff(tone);
+  const priceHint = pricing ? `Most engagements like this land around ${fmtMoney(pricing.standard)} depending on scope.` : "";
 
-  const opener = {
-    "local-friendly": `Saw you're looking for help with ${n.toLowerCase()} — I'm local and can help.`,
-    casual: `I saw your post about ${n.toLowerCase()} and I can help with that.`,
-    professional: `I'm reaching out regarding your request for ${n.toLowerCase()}.`,
-  }[tone];
+  // Hiring-company pitch: they posted a JOB (need an extra person) — offer to cover it on contract.
+  const hiring = isHiringLead(lead);
+  const role = (lead.title || "this role").replace(/\.$/, "");
+  const co = lead.sourceDetail ? ` at ${lead.sourceDetail}` : "";
+  const close = hiring
+    ? ({ "local-friendly": "Worth a quick chat about handling some of this on contract?", casual: "Open to a quick call about taking this on freelance?", professional: "If helpful, I'd welcome a brief conversation about supporting this on a contract basis." }[tone])
+    : cta(tone);
+
+  const opener = hiring
+    ? ({
+        "local-friendly": `Saw you're hiring for ${role}${co}. I take on this kind of work on a contract basis and could help right away.`,
+        casual: `Noticed you're hiring for ${role}${co}. I do this work freelance and can jump in quickly.`,
+        professional: `I saw your opening for ${role}${co}. I provide this work on a contract/freelance basis and may be able to help.`,
+      }[tone])
+    : ({
+        "local-friendly": `Saw you're looking for help with ${n.toLowerCase()} — I'm local and can help.`,
+        casual: `I saw your post about ${n.toLowerCase()} and I can help with that.`,
+        professional: `I'm reaching out regarding your request for ${n.toLowerCase()}.`,
+      }[tone]);
+
+  const value = hiring
+    ? "Bringing someone on contract can cover the workload immediately — useful for overflow, a backlog, or getting moving before a full-time hire is in place — without the ramp time and overhead of a permanent role."
+    : cred;
 
   const first_short = `${g} ${opener} ${close}`;
-  const first_normal = `${g}\n\n${opener}\n\n${cred}\n\n${close}\n\n${sign}`;
-  const first_premium = `${g}\n\n${opener}\n\n${cred} I focus on doing it properly the first time so you're not dealing with it again later. ${priceHint}\n\nIf it helps, I can walk you through exactly what's involved and what it would include — no pressure.\n\n${close}\n\n${sign}`;
-  const follow_up = `${g} just circling back on ${n.toLowerCase()} — still happy to help if it's useful. No worries at all if you've already sorted it out.\n\n${sign}`;
+  const first_normal = `${g}\n\n${opener}\n\n${value}\n\n${close}\n\n${sign}`;
+  const first_premium = hiring
+    ? `${g}\n\n${opener}\n\n${value} ${cred}\n\nI can scope a clear, fixed deliverable so it's lower-risk than an open-ended hire. ${priceHint}\n\n${close}\n\n${sign}`
+    : `${g}\n\n${opener}\n\n${value} I focus on doing it properly the first time so you're not dealing with it again later. ${priceHint}\n\nIf it helps, I can walk you through exactly what's involved and what it would include — no pressure.\n\n${close}\n\n${sign}`;
+  const follow_up = hiring
+    ? `${g} circling back on ${role} — if you're still covering that workload, I'm happy to take a piece of it on contract. No worries if you've filled it.\n\n${sign}`
+    : `${g} just circling back on ${n.toLowerCase()} — still happy to help if it's useful. No worries at all if you've already sorted it out.\n\n${sign}`;
 
-  const subject = `Re: ${lead.title ? lead.title.slice(0, 60) : analysis.serviceType}`;
+  const subject = hiring ? `Contract help with ${role.slice(0, 50)}` : `Re: ${lead.title ? lead.title.slice(0, 60) : analysis.serviceType}`;
   const email_version = `Subject: ${subject}\n\n${first_normal}`;
   const text_version = `${opener} ${close} — Irving`.slice(0, 320);
 

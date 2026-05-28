@@ -52,5 +52,16 @@ for (const sname of ["remotive", "greenhouse", "lever", "google-search"]) {
 ok(recordToLead({}).title === "(untitled)", "empty record → untitled lead (no throw)");
 ok(recordToLead({}).ingested === true, "empty record still flagged ingested");
 
+// 6. contract signal + contact passthrough (HN-style record with an email)
+const hn = makeRecord({ source: "hackernews", sourceDetail: "TinyCo (YC)", sourceUrl: "https://news.ycombinator.com/item?id=1", title: "TinyCo | Backend | Remote | Contract", description: "Looking for a freelance backend dev on contract. Email jobs@tinyco.example", remote: true, contactRaw: "jobs@tinyco.example" });
+ok(hn.contractSignal === true, "contract/freelance text → contractSignal");
+ok(hn.contactRaw === "jobs@tinyco.example", "contactRaw passthrough (real email from HN)");
+ok(makeRecord({ source: "remotive", title: "Full-time Manager", description: "permanent role" }).contractSignal === false, "non-contract → no signal");
+{
+  const lead = recordToLead(hn);
+  ok(lead.contact.type === "email" && lead.contact.value === "jobs@tinyco.example", "HN email becomes the lead's contact");
+}
+for (const sname of ["hackernews"]) { ok(SOURCES.includes(sname), "SOURCES has " + sname); ok(!!SOURCE_META[sname], "SOURCE_META has " + sname); ok(INGESTED_SOURCES.has(sname), "INGESTED_SOURCES has " + sname); }
+
 console.log(`\ningest tests: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

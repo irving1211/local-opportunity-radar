@@ -11,7 +11,11 @@ export function stripHtml(html) {
 }
 export const truncate = (s, n = 1400) => (String(s || "").length > n ? String(s).slice(0, n) + "…" : String(s || ""));
 
-export function makeRecord({ source, sourceDetail, sourceUrl, title, company, description, location, postedAt, foundViaQuery, tags = [], remote }) {
+// Detect contract / freelance / no-payroll work — Irving's ideal fit.
+export const CONTRACT_RE = /\b(contract|contractor|freelance|freelancer|1099|fractional|part[- ]?time|temporary|temp|consult(?:ant|ing)?|project[- ]based|hourly|gig|short[- ]term|interim)\b/i;
+export const isContract = (text) => CONTRACT_RE.test(text || "");
+
+export function makeRecord({ source, sourceDetail, sourceUrl, title, company, description, location, postedAt, foundViaQuery, tags = [], remote, contactRaw = "", contractSignal = false }) {
   const text = (title || "") + ". " + stripHtml(description);
   return {
     source,
@@ -28,5 +32,7 @@ export function makeRecord({ source, sourceDetail, sourceUrl, title, company, de
     foundViaQuery: foundViaQuery || "",
     tags: (tags || []).filter(Boolean).slice(0, 8),
     budgetClue: "",
+    contactRaw: contactRaw || "",   // real contact (e.g. emails in HN "who is hiring" posts)
+    contractSignal: !!contractSignal || isContract(text),  // contract/freelance/no-payroll fit
   };
 }
